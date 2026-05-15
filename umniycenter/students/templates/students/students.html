@@ -1,0 +1,107 @@
+{% extends 'accounts/trainer_base.html' %}
+{% load static %}
+
+{% block links %}
+  <link rel="stylesheet" href="{% static 'css/grade.css' %}" />
+{% endblock %}
+
+{% block title %}
+  Список учеников
+{% endblock %}
+
+{% block content %}
+  <div class="grd__wrap">
+    <div class="grd__header">
+      <div class="grd__title">Список учеников</div>
+      <a class="grd__btn-excel" href="#">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <path d="M3 9h18M3 15h18M9 3v18" />
+        </svg>Открыть в Excel
+      </a>
+    </div>
+
+    <div class="grd__filters std__filters">
+      <div class="grd__filter-row" style="display: none;">
+        <span class="grd__filter-label">Школа</span>
+        <div class="grd__field grd__field--sel">
+          <select id="sSchool">
+            <option value="">Начните вводить для поиска</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grd__filter-row">
+        <span class="grd__filter-label">Класс</span>
+        <div class="grd__field grd__field--sel">
+          <select id="sGroup">
+            <option value="">Все классы</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grd__filter-row">
+        <span class="grd__filter-label">Статус</span>
+        <div class="grd__field grd__field--sel">
+          <select id="sStatus">
+            <option value="active">Активный</option>
+            <option value="archive">Архивный</option>
+            <option value="">Все</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grd__filter-row">
+        <span class="grd__filter-label">Сортировать</span>
+        <div class="grd__field grd__field--sel">
+          <select id="sSort">
+            <option value="">Выберите критерий сортировки</option>
+            <option value="name_az">По имени (А-Я)</option>
+            <option value="name_za">По имени (Я-А)</option>
+            <option value="date_new">Сначала новые</option>
+            <option value="date_old">Сначала старые</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grd__filter-row">
+        <span class="grd__filter-label">Период</span>
+        <div class="std__period-wrap">
+          <input class="std__date" id="sDateFrom" type="date" />
+          <span class="std__date-separator">-</span>
+          <input class="std__date" id="sDateTo" type="date" />
+        </div>
+      </div>
+
+      <div class="grd__filter-row std__period-links">
+        <span class="grd__filter-label"></span>
+        <div class="std__period-link-wrap">
+          <button type="button" data-period="today">за сегодня</button>
+          <button type="button" data-period="week">за неделю</button>
+          <button type="button" data-period="month">за месяц</button>
+        </div>
+      </div>
+
+      <div class="grd__filter-row">
+        <span class="grd__filter-label">Поиск</span>
+        <div class="grd__field grd__field--srch">
+          <input type="text" id="sSearch" placeholder="Найти ученика" />
+        </div>
+      </div>
+
+      <div></div>
+    </div>
+
+    <button class="grd__btn-reset" onclick="resetStudentFilters()">Сбросить фильтр</button>
+
+    <div class="grd__list" id="studentsList">
+      <div class="grd__empty">Загрузка учеников...</div>
+    </div>
+
+    <div class="grd__footer" id="studentsFooter"></div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{% static 'students/js/students.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,70 @@
+version: "3.9"
+
+services:
+  web:
+    build: .
+    container_name: django_app
+    command: daphne -b 0.0.0.0 -p 8000 umniycenter.asgi:application
+    environment:
+      - DJANGO_DEBUG_MODE=true
+      - REDIS_HOST=redis
+    env_file:
+      - .env
+    volumes:
+      - ./umniycenter:/app/umniycenter
+      - static_volume:/app/umniycenter/staticfiles
+      - media_volume:/app/umniycenter/media
+    expose:
+      - "8000"
+    depends_on:
+      - db
+      - redis
+    restart: always
+  nginx:
+    image: nginx:alpine
+    container_name: nginx_proxy
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - static_volume:/app/umniycenter/staticfiles:ro
+      - media_volume:/app/umniycenter/media:ro
+    depends_on:
+      - web
+    restart: always
+  redis:
+    image: redis
+    container_name: redis_cache
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: always
+  db:
+    image: postgres:18
+    container_name: postgres_db
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+  
+  cloudpub:
+    image: cloudpub/cloudpub:latest
+    restart: unless-stopped
+    environment:
+      - TOKEN=${CLOUDPUB_TOKEN}
+    # command: publish --auth basic --acl testcloudpubuser@proton.me:admin http nginx:80
+    command: publish http nginx:80
+    volumes:
+      - cloudpub_config:/home/cloudpub
+    depends_on:
+      - nginx
+volumes:
+  postgres_data:
+  redis_data:
+  static_volume:
+  media_volume:
+  cloudpub_config:

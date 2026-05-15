@@ -1,0 +1,84 @@
+{% extends 'crm/base.html' %}
+{% load static %}
+
+{% block title %}Платежи - CRM{% endblock title %}
+{% block page_title %}Платежи{% endblock page_title %}
+
+{% block links %}
+<link rel="stylesheet" href="{% static 'crm/css/students.css' %}">
+{% endblock links %}
+
+{% block content %}
+<section class="crm-section-header">
+    <div>
+        <p class="crm-section-desc">Все платежи, статусы оплат, подписки и плательщики</p>
+    </div>
+    <div class="crm-section-actions">
+        <button class="crm-btn crm-btn--secondary" type="button" onclick="document.body.dispatchEvent(new CustomEvent('crm:toast', { detail: { type: 'info', title: 'Экспорт', message: 'Экспорт платежей будет реализован позже.' } }))">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <path d="M3 9h18M3 15h18M9 3v18"/>
+            </svg>
+            Экспорт
+        </button>
+        <button class="crm-btn crm-btn--primary" type="button" hx-get="{% url 'crm:payments_table' %}" hx-target="#paymentsTableHost" hx-swap="innerHTML">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+            </svg>
+            Обновить
+        </button>
+    </div>
+</section>
+
+<section class="crm-toolbar">
+    <div class="crm-toolbar__search">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input type="search" id="paymentsSearch" name="search" placeholder="Поиск по плательщику, ученику, тарифу, транзакции..." hx-get="{% url 'crm:payments_table' %}" hx-trigger="keyup changed delay:300ms, search" hx-target="#paymentsTableHost" hx-swap="innerHTML" hx-include=".crm-toolbar__filters">
+    </div>
+    <div class="crm-toolbar__filters">
+        <select id="paymentsStatusFilter" name="status" class="crm-select" hx-get="{% url 'crm:payments_table' %}" hx-trigger="change" hx-target="#paymentsTableHost" hx-swap="innerHTML" hx-include="#paymentsSearch, .crm-toolbar__filters">
+            <option value="">Все статусы</option>
+            <option value="pending">Ожидает оплаты</option>
+            <option value="completed">Оплачен</option>
+            <option value="failed">Ошибка</option>
+            <option value="refunded">Возврат</option>
+            <option value="canceled">Отменен</option>
+        </select>
+        <select id="paymentsMethodFilter" name="method" class="crm-select" hx-get="{% url 'crm:payments_table' %}" hx-trigger="change" hx-target="#paymentsTableHost" hx-swap="innerHTML" hx-include="#paymentsSearch, .crm-toolbar__filters">
+            <option value="">Все способы</option>
+            <option value="online">Онлайн-оплата</option>
+            <option value="cash">Наличные</option>
+            <option value="card">Банковская карта</option>
+            <option value="transfer">Банковский перевод</option>
+        </select>
+        <select id="paymentsSortFilter" name="sort" class="crm-select" hx-get="{% url 'crm:payments_table' %}" hx-trigger="change" hx-target="#paymentsTableHost" hx-swap="innerHTML" hx-include="#paymentsSearch, .crm-toolbar__filters">
+            <option value="date_new">Сначала новые</option>
+            <option value="date_old">Сначала старые</option>
+            <option value="amount_desc">Сумма по убыванию</option>
+            <option value="amount_asc">Сумма по возрастанию</option>
+        </select>
+    </div>
+</section>
+
+<section class="crm-data-panel">
+    <div id="paymentsTableHost">
+        {% include 'crm/partials/payments_table.html' %}
+    </div>
+</section>
+
+<aside class="crm-drawer" id="paymentDetailsDrawer">
+    <div class="crm-drawer__overlay" onclick="closePaymentDetailsDrawer()"></div>
+    {% include 'crm/partials/payment_drawer.html' %}
+</aside>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+    function closePaymentDetailsDrawer() {
+        document.getElementById('paymentDetailsDrawer')?.classList.remove('is-open');
+    }
+</script>
+{% endblock scripts %}

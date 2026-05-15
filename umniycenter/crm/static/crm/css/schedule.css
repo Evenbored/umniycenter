@@ -1,0 +1,713 @@
+@import url("/static/crm/css/students.css");
+
+.crm-input {
+    border: 1px solid var(--crm-border);
+    border-radius: 12px;
+    padding: 10px 14px;
+    background: var(--crm-surface-soft);
+    color: var(--crm-text);
+    font: inherit;
+    font-size: 13px;
+    outline: 0;
+}
+
+.crm-schedule-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(360px, 0.6fr);
+    gap: 20px;
+}
+
+.crm-schedule-list,
+.crm-template-list {
+    display: grid;
+    gap: 12px;
+    padding: 18px;
+}
+
+.crm-lesson-card,
+.crm-template-card {
+    border: 1px solid var(--crm-border);
+    border-radius: 18px;
+    padding: 16px;
+    background: var(--crm-surface);
+    cursor: pointer;
+    transition: border-color 0.18s, box-shadow 0.18s, transform 0.18s;
+}
+
+.crm-lesson-card:hover,
+.crm-template-card:hover {
+    border-color: var(--crm-primary);
+    box-shadow: 0 8px 20px rgba(79, 70, 229, 0.12);
+    transform: translateY(-1px);
+}
+
+.crm-lesson-card__top,
+.crm-template-card__top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.crm-lesson-card__title,
+.crm-template-card__title {
+    margin: 0 0 4px;
+    font-size: 15px;
+    font-weight: 800;
+}
+
+.crm-lesson-card__meta,
+.crm-template-card__meta {
+    color: var(--crm-muted);
+    font-size: 12px;
+}
+
+.crm-lesson-card__time {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--crm-text);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.crm-status-badge--scheduled {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.crm-status-badge--completed {
+    background: #e0e7ff;
+    color: #3730a3;
+}
+
+.crm-status-badge--cancelled {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.crm-status-badge--rescheduled {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.crm-form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    margin-bottom: 14px;
+}
+
+.crm-form-field span,
+.crm-checkbox-line span {
+    color: var(--crm-muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.crm-form-field input,
+.crm-form-field select {
+    width: 100%;
+    border: 1px solid var(--crm-border);
+    border-radius: 13px;
+    padding: 12px 14px;
+    background: var(--crm-surface-soft);
+    color: var(--crm-text);
+    font: inherit;
+    font-size: 14px;
+    outline: 0;
+}
+
+.crm-form-field select[multiple] {
+    min-height: 160px;
+    padding: 8px;
+}
+
+.crm-form-field select[multiple] option {
+    padding: 8px 10px;
+    border-radius: 8px;
+}
+
+.crm-checkbox-line {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-top: 4px;
+}
+
+.crm-divider {
+    border: 0;
+    border-top: 1px solid var(--crm-border);
+    margin: 22px 0;
+}
+
+.crm-create-lesson-section {
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--crm-border);
+    border-radius: 16px;
+    background: var(--crm-surface);
+    margin-bottom: 14px;
+}
+
+.crm-create-lesson-section__title {
+    color: var(--crm-text);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.crm-segmented-control {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+}
+
+.crm-segmented-control__item input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.crm-segmented-control__item span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    border: 1px solid var(--crm-border);
+    border-radius: 12px;
+    background: var(--crm-surface-soft);
+    color: var(--crm-text);
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.18s;
+}
+
+.crm-segmented-control__item input:checked + span {
+    background: var(--crm-primary);
+    border-color: var(--crm-primary);
+    color: #ffffff;
+}
+
+.crm-create-lesson-mode {
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: var(--crm-surface-soft);
+    color: var(--crm-muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.crm-attendance-list {
+    display: grid;
+    gap: 10px;
+}
+
+.crm-attendance-item {
+    border: 1px solid var(--crm-border);
+    border-radius: 14px;
+    padding: 12px;
+    background: var(--crm-surface-soft);
+}
+
+.crm-attendance-item__top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.crm-attendance-item__name {
+    font-weight: 800;
+}
+
+.crm-attendance-actions {
+    display: grid;
+    grid-template-columns: minmax(110px, 1fr) minmax(110px, 1fr) auto;
+    gap: 8px;
+}
+
+.crm-attendance-actions select {
+    border: 1px solid var(--crm-border);
+    border-radius: 10px;
+    padding: 9px 10px;
+    background: var(--crm-surface);
+    font: inherit;
+    font-size: 12px;
+}
+
+@media (max-width: 640px) {
+    .crm-attendance-actions {
+        grid-template-columns: 1fr;
+    }
+}
+
+.crm-btn--danger {
+    background: var(--crm-red);
+    color: #ffffff;
+}
+
+/* Today's schedule */
+.crm-today-schedule-layout {
+    display: grid;
+    grid-template-columns: minmax(340px, 0.75fr) minmax(420px, 1fr) minmax(360px, 0.95fr);
+    gap: 20px;
+    align-items: start;
+}
+
+.crm-today-lessons-list,
+.crm-today-attendance-list {
+    display: grid;
+    gap: 12px;
+    padding: 18px;
+}
+
+.crm-today-lesson-card {
+    display: grid;
+    grid-template-columns: 74px minmax(0, 1fr) 112px;
+    gap: 14px;
+    align-items: center;
+    border: 1px solid var(--crm-border);
+    border-radius: 18px;
+    padding: 16px;
+    background: var(--crm-surface);
+    cursor: pointer;
+    transition: border-color 0.18s, box-shadow 0.18s, transform 0.18s, background 0.18s;
+}
+
+.crm-today-lesson-card:hover,
+.crm-today-lesson-card.is-active {
+    border-color: var(--crm-primary);
+    box-shadow: 0 8px 20px rgba(79, 70, 229, 0.12);
+    transform: translateY(-1px);
+}
+
+.crm-today-lesson-card.is-active {
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.08), rgba(6, 182, 212, 0.04));
+}
+
+.crm-today-lesson-card__time {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-right: 12px;
+    border-right: 1px solid var(--crm-border);
+}
+
+.crm-today-lesson-card__time strong {
+    font-size: 18px;
+    color: var(--crm-text);
+}
+
+.crm-today-lesson-card__time span,
+.crm-today-lesson-card__main p,
+.crm-today-lesson-card__stats span,
+.crm-today-student-card__info span {
+    color: var(--crm-muted);
+    font-size: 12px;
+}
+
+.crm-today-lesson-card__main h4 {
+    margin: 0 0 4px;
+    font-size: 15px;
+    font-weight: 800;
+}
+
+.crm-today-lesson-card__main p {
+    margin: 0 0 8px;
+}
+
+.crm-today-lesson-card__stats {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.crm-today-lesson-card__stats strong {
+    font-size: 28px;
+    line-height: 1;
+    color: var(--crm-primary);
+}
+
+.crm-today-student-card {
+    display: grid;
+    gap: 12px;
+    border: 1px solid var(--crm-border);
+    border-radius: 14px;
+    padding: 12px;
+    background: var(--crm-surface);
+    cursor: pointer;
+    transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
+}
+
+.crm-today-student-card__info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.crm-today-student-card__info strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.crm-today-student-card__status {
+    display: none;
+    justify-self: start;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: var(--crm-surface-soft);
+    color: var(--crm-muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.crm-today-student-card__status.is-marked {
+    background: #e0e7ff;
+    color: #3730a3;
+}
+
+.crm-today-student-card__actions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+}
+
+.crm-today-student-card.is-selected {
+    border-color: var(--crm-primary);
+    box-shadow: 0 8px 20px rgba(79, 70, 229, 0.12);
+    background: var(--crm-surface-soft);
+}
+
+.crm-today-student-card .crm-attendance-toggle {
+    padding: 8px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    text-align: center;
+}
+
+.crm-today-student-detail {
+    display: grid;
+    gap: 12px;
+    padding: 18px;
+}
+
+.crm-today-student-panel {
+    position: sticky;
+    top: 20px;
+}
+
+.crm-student-detail-card {
+    display: grid;
+    gap: 14px;
+}
+
+.crm-student-detail-card__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.crm-student-detail-card__name {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--crm-text);
+    margin: 0;
+}
+
+.crm-student-detail-card__meta {
+    color: var(--crm-muted);
+    font-size: 13px;
+}
+
+.crm-student-tabs {
+    display: grid;
+    gap: 12px;
+    margin-top: 4px;
+}
+
+.crm-student-tabs__nav {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+}
+
+.crm-student-tabs__tab {
+    border: 1px solid var(--crm-border);
+    border-radius: 12px;
+    padding: 10px 12px;
+    background: var(--crm-surface-soft);
+    color: var(--crm-text);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.18s;
+}
+
+.crm-student-tabs__tab:hover {
+    border-color: var(--crm-primary);
+    color: var(--crm-primary);
+}
+
+.crm-student-tabs__tab.is-active {
+    background: var(--crm-primary);
+    color: #ffffff;
+    border-color: var(--crm-primary);
+}
+
+.crm-student-tabs__content {
+    padding: 16px;
+    border: 1px solid var(--crm-border);
+    border-radius: 16px;
+    background: var(--crm-surface);
+}
+
+.crm-student-detail-info {
+    display: grid;
+    gap: 10px;
+    padding: 14px;
+    border-radius: 14px;
+    background: var(--crm-surface-soft);
+}
+
+.crm-student-detail-info__row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 13px;
+}
+
+.crm-student-detail-info__row span:first-child {
+    color: var(--crm-muted);
+}
+
+.crm-student-detail-info__row strong {
+    color: var(--crm-text);
+    font-weight: 700;
+    text-align: right;
+}
+
+.crm-history-list {
+    display: grid;
+    gap: 10px;
+}
+
+.crm-history-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    padding: 12px;
+    border: 1px solid var(--crm-border);
+    border-radius: 12px;
+    background: var(--crm-surface-soft);
+}
+
+.crm-history-item strong {
+    display: block;
+    color: var(--crm-text);
+    font-size: 13px;
+}
+
+.crm-history-item span {
+    display: block;
+    color: var(--crm-muted);
+    font-size: 12px;
+    margin-top: 3px;
+}
+
+.crm-history-item__value {
+    color: var(--crm-text);
+    font-size: 13px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.crm-attendance-toggle {
+    border: 1px solid var(--crm-border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    background: var(--crm-surface-soft);
+    color: var(--crm-text);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.18s;
+    width: 100%;
+    text-align: left;
+}
+
+.crm-attendance-toggle:hover {
+    border-color: var(--crm-primary);
+    color: var(--crm-primary);
+}
+
+.crm-attendance-toggle.is-active {
+    background: var(--crm-primary);
+    border-color: var(--crm-primary);
+    color: #ffffff;
+}
+
+@media (max-width: 1180px) {
+    .crm-today-schedule-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 760px) {
+    .crm-today-lesson-card,
+    .crm-today-student-card {
+        grid-template-columns: 1fr;
+    }
+
+    .crm-today-lesson-card__time {
+        padding-right: 0;
+        padding-bottom: 10px;
+        border-right: 0;
+        border-bottom: 1px solid var(--crm-border);
+    }
+
+    .crm-today-lesson-card__stats {
+        text-align: left;
+    }
+
+    .crm-today-student-card__actions {
+        grid-template-columns: 1fr;
+    }
+
+    .crm-student-tabs__nav {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .crm-student-detail-card__header {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 1100px) {
+    .crm-schedule-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Кастомный searchable select - точная копия .crm-select */
+.crm-searchable-select {
+    position: relative;
+    display: inline-block;
+}
+
+.crm-searchable-select__display {
+    /* Копируем все стили из .crm-select */
+    width: 100%;
+    border: 1px solid var(--crm-border);
+    border-radius: 12px;
+    padding: 11px 16px;
+    padding-right: 40px; /* Место для стрелки */
+    background: var(--crm-surface-soft);
+    color: var(--crm-text);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    outline: 0;
+    user-select: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Стрелка - точно как у select */
+.crm-searchable-select__display::after {
+    content: '';
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 5px 4px 0 4px;
+    border-color: var(--crm-text) transparent transparent transparent;
+    pointer-events: none;
+}
+
+.crm-searchable-select.is-open .crm-searchable-select__display::after {
+    border-width: 0 4px 5px 4px;
+    border-color: transparent transparent var(--crm-text) transparent;
+}
+
+/* Dropdown */
+.crm-searchable-select__dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    min-width: 100%;
+    background: var(--crm-surface-soft);
+    border: 1px solid var(--crm-border);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.crm-searchable-select.is-open .crm-searchable-select__dropdown {
+    display: block;
+}
+
+/* Поле поиска */
+.crm-searchable-select__search {
+    display: block;
+    width: calc(100% - 16px);
+    margin: 8px;
+    padding: 8px 12px;
+    border: 1px solid var(--crm-border);
+    border-radius: 8px;
+    background: var(--crm-surface);
+    color: var(--crm-text);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    outline: none;
+}
+
+.crm-searchable-select__search::placeholder {
+    color: var(--crm-muted);
+    font-weight: 400;
+}
+
+/* Список опций */
+.crm-searchable-select__options {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Опция */
+.crm-searchable-select__option {
+    padding: 10px 16px;
+    cursor: pointer;
+    color: var(--crm-text);
+    font-size: 13px;
+    font-weight: 600;
+    transition: background 0.15s, color 0.15s;
+}
+
+.crm-searchable-select__option:hover {
+    background: var(--crm-primary);
+    color: #ffffff;
+}
+
+.crm-searchable-select__option.is-selected {
+    background: var(--crm-primary);
+    color: #ffffff;
+}

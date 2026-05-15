@@ -1,0 +1,10 @@
+<div id="todayStudentHost">
+    <div class="crm-data-panel__header"><div><strong id="selectedStudentTitle">{% if selected_student %}{{ selected_student.get_full_name|default:selected_student.username }}{% else %}Ученик{% endif %}</strong><span id="selectedStudentMeta">{% if selected_student %}{{ selected_student.phone|default:'-' }}{% else %}Нажмите на ученика в списке слева{% endif %}</span></div></div>
+    <div class="crm-today-student-detail" id="todayStudentDetail">
+        {% if selected_student %}
+            <div class="crm-student-detail-card"><div class="crm-student-detail-card__header"><div><h4 class="crm-student-detail-card__name">{{ selected_student.get_full_name|default:selected_student.username }}</h4><div class="crm-student-detail-card__meta">{{ selected_student.email|default:'-' }}</div></div></div><div class="crm-info-grid"><div class="crm-info-item"><span class="crm-info-label">Телефон</span><strong>{{ selected_student.phone|default:'-' }}</strong></div><div class="crm-info-item"><span class="crm-info-label">Логин</span><strong>{{ selected_student.username }}</strong></div></div></div>
+        {% else %}
+            <div class="crm-table-empty">Выберите ученика</div>
+        {% endif %}
+    </div>
+</div>

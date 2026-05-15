@@ -1,0 +1,113 @@
+{% extends 'accounts/trainer_base.html' %}
+{% load static %}
+{% comment %} {% extends 'users/base.html' %}
+
+{% block title %}
+  Your Profile
+{% endblock %}
+
+{% block content %}
+  <h1>Hi, {{ request.user.first_name|upper }} {{ request.user.last_name|upper }}</h1>
+  <div class="profile-section">
+    <h2>Account Details</h2>
+    <p>{{ request.user.first_name }} {{ request.user.last_name }}</p>
+    <p>{{ request.user.email }}</p>
+    <p>{{ request.user.country|default:'Not specified' }}</p>
+    <button hx-get="{% url 'users:edit_account_details' %}" hx-target="#account-details-content" hx-swap="innerHTML">Edit</button>
+    <div id="account-details-content"></div>
+  </div>
+  <a href="{% url 'users:logout' %}" class="link">Log Out</a>
+{% endblock %} {% endcomment %}
+
+{% block links %}
+  <link rel="stylesheet" href="{% static 'css\grade.css' %}" />
+{% endblock %}
+
+{% load static %}
+{% block title %}
+  Классы
+{% endblock %}
+
+{% block content %}
+  <div class="grd__wrap">
+    <!-- HEADER -->
+    <div class="grd__header">
+      <div class="grd__title">Классы</div>
+      <a class="grd__btn-excel" href="#">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <path d="M3 9h18M3 15h18M9 3v18" />
+        </svg>Открыть в Excel
+      </a>
+    </div>
+
+    <!-- FILTERS -->
+    <div class="grd__filters">
+      <div class="grd__filter-row" style="display: none;">
+        <span class="grd__filter-label">Школа</span>
+        <div class="grd__field grd__field--sel">
+          <select id="fSchool">
+            <option value="">Начните вводить для поиска</option>
+            <option value="smart">Центр развития интеллекта «Умный», Ломоносов</option>
+            <option value="zvezda">Академия «Звезда», Санкт-Петербург</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grd__filter-row">
+        <span class="grd__filter-label">Сортировать</span>
+        <div class="grd__field grd__field--sel">
+          <select id="fSort">
+            <option value="">Выберите критерий сортировки</option>
+            <option value="name_az">По названию (А–Я)</option>
+            <option value="students_desc">По кол-ву учеников ↓</option>
+            <option value="students_asc">По кол-ву учеников ↑</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grd__filter-row">
+        <span class="grd__filter-label">Учитель</span>
+        <div class="grd__field grd__field--sel">
+          <select id="fTeacher">
+            <option value="">Все учителя</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grd__filter-row">
+        <span class="grd__filter-label">Статус</span>
+        <div class="grd__field grd__field--sel">
+          <select id="fStatus">
+            <option value="active">Активный</option>
+            <option value="archive">Архивный</option>
+            <option value="">Все</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grd__filter-row">
+        <span class="grd__filter-label">Поиск</span>
+        <div class="grd__field grd__field--srch">
+          <input type="text" id="fSearch" placeholder="Найти класс" />
+        </div>
+      </div>
+
+      <div></div>
+    </div>
+
+    <button class="grd__btn-reset" onclick="resetFilters()">Сбросить фильтр</button>
+
+    <!-- CARD LIST -->
+    <div class="grd__list" id="grdList">
+      <div class="grd__empty">Загрузка классов...</div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="grd__footer" id="grdFooter"></div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{% static 'js/grade.js' %}"></script>
+{% endblock %}

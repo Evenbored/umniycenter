@@ -1,0 +1,87 @@
+{% extends 'crm/base.html' %}
+{% load static %}
+
+{% block title %}Заявки - CRM{% endblock title %}
+{% block page_title %}Заявки{% endblock page_title %}
+
+{% block links %}
+<link rel="stylesheet" href="{% static 'crm/css/requests.css' %}">
+{% endblock links %}
+
+{% block content %}
+<div x-data="{ viewMode: 'table', toggleView() { this.viewMode = this.viewMode === 'table' ? 'cards' : 'table' } }">
+<section class="crm-section-header">
+    <div>
+        <p class="crm-section-desc">Обращения с сайта учебного центра</p>
+    </div>
+    <div class="crm-section-actions">
+        <button class="crm-btn crm-btn--secondary" type="button" onclick="document.body.dispatchEvent(new CustomEvent('crm:toast', { detail: { type: 'info', title: 'Экспорт', message: 'Экспорт заявок будет реализован позже.' } }))">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <path d="M3 9h18M3 15h18M9 3v18"/>
+            </svg>
+            Экспорт
+        </button>
+        <button class="crm-btn crm-btn--primary" type="button" hx-get="{% url 'crm:requests_table' %}" hx-target="#requestsTableHost" hx-swap="innerHTML" hx-include="#requestsSearch, .crm-toolbar__filters">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+            </svg>
+            Обновить
+        </button>
+    </div>
+</section>
+
+<section class="crm-toolbar">
+    <div class="crm-toolbar__search">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input type="search" id="requestsSearch" name="search" placeholder="Поиск по ФИО, email, курсам..." value="{{ request.GET.search|default:'' }}" hx-get="{% url 'crm:requests_table' %}" hx-trigger="keyup changed delay:300ms, search" hx-target="#requestsTableHost" hx-swap="innerHTML" hx-include=".crm-toolbar__filters">
+    </div>
+    <div class="crm-toolbar__filters">
+        <select id="requestsStatusFilter" name="status" class="crm-select" hx-get="{% url 'crm:requests_table' %}" hx-trigger="change" hx-target="#requestsTableHost" hx-swap="innerHTML" hx-include="#requestsSearch, .crm-toolbar__filters">
+            <option value="">Все заявки</option>
+            <option value="new" {% if request.GET.status|default:'new' == 'new' %}selected{% endif %}>Новые</option>
+            <option value="processed" {% if request.GET.status == 'processed' %}selected{% endif %}>Обработанные</option>
+        </select>
+        <select id="requestsSortFilter" name="sort" class="crm-select" hx-get="{% url 'crm:requests_table' %}" hx-trigger="change" hx-target="#requestsTableHost" hx-swap="innerHTML" hx-include="#requestsSearch, .crm-toolbar__filters">
+            <option value="-created" {% if request.GET.sort|default:'-created' == '-created' %}selected{% endif %}>Сначала новые</option>
+            <option value="created" {% if request.GET.sort == 'created' %}selected{% endif %}>Сначала старые</option>
+            <option value="child_fio" {% if request.GET.sort == 'child_fio' %}selected{% endif %}>По имени ребенка</option>
+        </select>
+    </div>
+</section>
+
+<section class="crm-data-panel">
+    <div id="requestsTableHost">
+        {% include 'crm/partials/requests_table.html' %}
+    </div>
+</section>
+</div>
+
+<aside class="crm-drawer" id="requestDrawer">
+    <div class="crm-drawer__overlay" onclick="closeRequestDrawer()"></div>
+    {% include 'crm/partials/request_drawer.html' %}
+</aside>
+
+<aside class="crm-drawer" id="studentDrawer">
+    <div class="crm-drawer__overlay" onclick="closeStudentDrawer()"></div>
+    {% include 'crm/partials/request_student_drawer.html' %}
+</aside>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+    function closeRequestDrawer() {
+        document.getElementById('requestDrawer')?.classList.remove('is-open');
+    }
+
+    function closeStudentDrawer() {
+        document.getElementById('studentDrawer')?.classList.remove('is-open');
+    }
+
+    document.body.addEventListener('crm:close-request-drawer', closeRequestDrawer);
+    document.body.addEventListener('crm:close-student-drawer', closeStudentDrawer);
+</script>
+{% endblock scripts %}

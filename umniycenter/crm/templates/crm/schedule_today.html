@@ -1,0 +1,35 @@
+{% extends 'crm/base.html' %}
+{% load static %}
+
+{% block title %}Сегодняшнее расписание - CRM{% endblock title %}
+{% block page_title %}Сегодняшнее расписание{% endblock page_title %}
+
+{% block links %}
+<link rel="stylesheet" href="{% static 'crm/css/schedule.css' %}">
+{% endblock links %}
+
+{% block content %}
+<section class="crm-section-header">
+    <div>
+        <p class="crm-section-desc">Занятия на сегодня и быстрая отметка посещаемости</p>
+    </div>
+    <div class="crm-section-actions">
+        <button class="crm-btn crm-btn--secondary" type="button" hx-get="{% url 'crm:schedule_today_lessons' %}" hx-target="#todayLessonsHost" hx-swap="outerHTML">Обновить</button>
+        <a class="crm-btn crm-btn--primary" href="{% url 'crm:schedule' %}">Управление расписанием</a>
+    </div>
+</section>
+
+<section class="crm-today-schedule-layout">
+    <article class="crm-data-panel crm-today-lessons-panel">
+        {% include 'crm/partials/schedule_today_lessons.html' %}
+    </article>
+
+    <article class="crm-data-panel crm-today-attendance-panel">
+        {% include 'crm/partials/schedule_today_attendance.html' %}
+    </article>
+
+    <article class="crm-data-panel crm-today-student-panel">
+        {% include 'crm/partials/schedule_today_student.html' %}
+    </article>
+</section>
+{% endblock content %}

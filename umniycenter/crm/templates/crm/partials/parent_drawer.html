@@ -1,0 +1,99 @@
+<div class="crm-drawer__panel crm-drawer__panel--wide" id="parentDrawerContent">
+    <header class="crm-drawer__header">
+        <div>
+            <h3 id="parentDrawerTitle">{{ drawer_title }}</h3>
+            <p id="parentDrawerSubtitle">{{ drawer_subtitle }}</p>
+        </div>
+        <button class="crm-btn-icon" type="button" onclick="closeParentDetailsDrawer()" aria-label="Закрыть">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M18 6 6 18M6 6l12 12"/>
+            </svg>
+        </button>
+    </header>
+
+    <div class="crm-drawer__content">
+        {% if selected_parent %}
+            <div class="crm-student-profile">
+                <div class="crm-student-profile__avatar" id="parentDrawerInitials">{{ selected_parent.full_name|first|upper }}</div>
+                <div>
+                    <h4 id="parentDrawerName">{{ selected_parent.full_name }}</h4>
+                    <span id="parentDrawerStatus">
+                        {% if selected_parent.is_active %}
+                            <span class="crm-status-badge crm-status-badge--active">Активный</span>
+                        {% else %}
+                            <span class="crm-status-badge crm-status-badge--archive">Архивный</span>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+
+            <div class="crm-drawer-section">
+                <h4>Контакты и доступ</h4>
+                <div class="crm-info-grid">
+                    <div class="crm-info-item"><span class="crm-info-label">Телефон</span><strong id="parentDrawerPhone">{{ selected_parent.phone|default:'-' }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Email</span><strong id="parentDrawerEmail">{{ selected_parent.email|default:'-' }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Логин</span><strong id="parentDrawerUsername">{{ selected_parent.username }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Пароль</span><strong>Текущий пароль скрыт. Можно задать новый.</strong></div>
+                </div>
+            </div>
+
+            <div class="crm-drawer-section">
+                <h4>Дети</h4>
+                <div id="parentDrawerChildren">
+                    {% if selected_parent.children %}
+                        {% for child in selected_parent.children %}
+                            <div class="crm-parent-card">
+                                <div class="crm-parent-card__header">
+                                    <strong>{{ child.full_name }}</strong>
+                                    {% if child.is_active %}
+                                        <span class="crm-status-badge crm-status-badge--active">Активный</span>
+                                    {% else %}
+                                        <span class="crm-status-badge crm-status-badge--archive">Архивный</span>
+                                    {% endif %}
+                                </div>
+                                <div class="crm-info-grid" style="margin-top: 8px;">
+                                    <div class="crm-info-item"><span class="crm-info-label">Логин</span><strong>{{ child.username }}</strong></div>
+                                    <div class="crm-info-item"><span class="crm-info-label">Контакты</span><strong>{{ child.phone|default:child.email|default:'-' }}</strong></div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p style="color: var(--crm-muted); font-size: 13px;">У родителя нет привязанных детей</p>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+
+        <form
+            class="crm-drawer-section crm-student-edit-form"
+            id="parentEditForm"
+            hx-post="{{ form_action }}"
+            hx-target="#parentDrawerContent"
+            hx-swap="outerHTML"
+        >
+            {% csrf_token %}
+            <h4>Редактирование родителя</h4>
+            <div class="crm-form-grid">
+                <label class="crm-form-field"><span>Фамилия *</span><input id="parentEditLastName" name="last_name" type="text" required value="{{ parent_form.last_name }}"></label>
+                <label class="crm-form-field"><span>Имя *</span><input id="parentEditFirstName" name="first_name" type="text" required value="{{ parent_form.first_name }}"></label>
+                <label class="crm-form-field"><span>Телефон</span><input id="parentEditPhone" name="phone" type="tel" placeholder="+79001234567" value="{{ parent_form.phone }}"></label>
+                <label class="crm-form-field"><span>Email</span><input id="parentEditEmail" name="email" type="email" value="{{ parent_form.email }}"></label>
+                <label class="crm-form-field"><span>Логин *</span><input id="parentEditUsername" name="username" type="text" required value="{{ parent_form.username }}"></label>
+                <label class="crm-form-field"><span>Новый пароль</span><input id="parentEditPassword" name="password" type="text" placeholder="Оставьте пустым, чтобы не менять"></label>
+                <label class="crm-form-field">
+                    <span>Статус</span>
+                    <select id="parentEditIsActive" name="is_active">
+                        <option value="true" {% if parent_form.is_active %}selected{% endif %}>Активный</option>
+                        <option value="false" {% if not parent_form.is_active %}selected{% endif %}>Архивный</option>
+                    </select>
+                </label>
+            </div>
+            <div class="crm-form-alert" id="parentEditAlert" {% if not form_error %}hidden{% endif %} hidden>{{ form_error|default:'' }}</div>
+        </form>
+    </div>
+
+    <footer class="crm-drawer__footer">
+        <button class="crm-btn crm-btn--secondary" type="button" onclick="closeParentDetailsDrawer()">Закрыть</button>
+        <button class="crm-btn crm-btn--primary" type="submit" form="parentEditForm" id="parentEditSaveBtn">{{ submit_label }}</button>
+    </footer>
+</div>

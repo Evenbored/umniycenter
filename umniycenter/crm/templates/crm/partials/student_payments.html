@@ -1,0 +1,46 @@
+<div id="studentPaymentsHost">
+    {% if form_error %}<div class="crm-form-alert">{{ form_error }}</div>{% endif %}
+    {% if student_payments %}
+        {% for payment in student_payments %}
+            <div class="crm-payment-card">
+                <div class="crm-payment-card__header">
+                    <div>
+                        <div class="crm-payment-card__title">Платеж #{{ payment.id }}</div>
+                        <div class="crm-payment-card__date">{{ payment.created_at|date:'d.m.Y' }}</div>
+                    </div>
+                    {% if payment.status == 'completed' %}
+                        <span class="crm-status-badge crm-status-badge--active">{{ payment.get_status_display }}</span>
+                    {% else %}
+                        <span class="crm-status-badge crm-status-badge--archive">{{ payment.get_status_display }}</span>
+                    {% endif %}
+                </div>
+                <div class="crm-payment-card__details">
+                    <div class="crm-payment-detail"><span class="crm-payment-detail__label">Сумма:</span><span class="crm-payment-detail__value">{{ payment.amount|floatformat:0 }} ₽</span></div>
+                    <div class="crm-payment-detail"><span class="crm-payment-detail__label">Способ оплаты:</span><span class="crm-payment-detail__value">{{ payment.get_payment_method_display }}</span></div>
+                    <div class="crm-payment-detail"><span class="crm-payment-detail__label">Тариф:</span><span class="crm-payment-detail__value">{{ payment.subscription.tariff.name }}</span></div>
+                    {% if payment.yookassa_payment_url %}<div class="crm-payment-detail"><span class="crm-payment-detail__label">Ссылка:</span><span class="crm-payment-detail__value"><a href="{{ payment.yookassa_payment_url }}" target="_blank" rel="noopener">Открыть оплату</a></span></div>{% endif %}
+                    {% if payment.paid_at %}<div class="crm-payment-detail"><span class="crm-payment-detail__label">Дата оплаты:</span><span class="crm-payment-detail__value">{{ payment.paid_at|date:'d.m.Y' }}</span></div>{% endif %}
+                    {% if payment.error_message %}<div class="crm-payment-detail"><span class="crm-payment-detail__label">Ошибка:</span><span class="crm-payment-detail__value">{{ payment.error_message }}</span></div>{% endif %}
+                </div>
+                {% if payment.status == 'pending' and payment.payment_method != 'online' %}
+                    <div class="crm-payment-card__actions">
+                        <button class="crm-btn crm-btn--primary crm-btn--sm" type="button" hx-post="{% url 'crm:student_confirm_payment' selected_student.id payment.id %}" hx-target="#studentPaymentsHost" hx-swap="outerHTML" hx-confirm="Подтвердить получение оплаты и активировать тариф?">Подтвердить оплату</button>
+                        <form hx-post="{% url 'crm:student_cancel_payment' selected_student.id payment.id %}" hx-target="#studentPaymentsHost" hx-swap="outerHTML" style="display:inline-flex;">
+                            {% csrf_token %}<input type="hidden" name="reason" value="Оплата не поступила">
+                            <button class="crm-btn crm-btn--secondary crm-btn--sm" type="submit" hx-confirm="Отменить платеж?">Отменить</button>
+                        </form>
+                    </div>
+                {% elif payment.status == 'failed' %}
+                    <div class="crm-payment-card__actions">
+                        <form hx-post="{% url 'crm:student_cancel_payment' selected_student.id payment.id %}" hx-target="#studentPaymentsHost" hx-swap="outerHTML" style="display:inline-flex;">
+                            {% csrf_token %}<input type="hidden" name="reason" value="Оплата не поступила">
+                            <button class="crm-btn crm-btn--secondary crm-btn--sm" type="submit" hx-confirm="Отменить платеж?">Отменить</button>
+                        </form>
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+    {% else %}
+        <p style="color: var(--crm-muted); font-size: 13px;">История платежей пуста</p>
+    {% endif %}
+</div>

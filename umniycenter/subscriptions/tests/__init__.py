@@ -1,0 +1,1 @@
+"""Subscriptions app tests package."""

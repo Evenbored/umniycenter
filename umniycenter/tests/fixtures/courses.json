@@ -1,0 +1,37 @@
+[
+  {
+    "model": "courses.Courses",
+    "pk": 1,
+    "fields": {
+      "name": "Программирование Python"
+    }
+  },
+  {
+    "model": "courses.Courses",
+    "pk": 2,
+    "fields": {
+      "name": "Веб-разработка"
+    }
+  },
+  {
+    "model": "courses.Courses",
+    "pk": 3,
+    "fields": {
+      "name": "Робототехника"
+    }
+  },
+  {
+    "model": "courses.Courses",
+    "pk": 4,
+    "fields": {
+      "name": "Математика"
+    }
+  },
+  {
+    "model": "courses.Courses",
+    "pk": 5,
+    "fields": {
+      "name": "Английский язык"
+    }
+  }
+]

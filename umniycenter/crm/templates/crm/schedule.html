@@ -1,0 +1,136 @@
+{% extends 'crm/base.html' %}
+{% load static %}
+
+{% block title %}Расписание - CRM{% endblock title %}
+{% block page_title %}Расписание{% endblock page_title %}
+
+{% block links %}
+<link rel="stylesheet" href="{% static 'crm/css/schedule.css' %}">
+{% endblock links %}
+
+{% block content %}
+<section class="crm-section-header">
+    <div>
+        <p class="crm-section-desc">Стандартное время групп, автогенерация занятий, отмена и перенос уроков</p>
+    </div>
+    <div class="crm-section-actions">
+        <button class="crm-btn crm-btn--secondary" type="button" hx-get="{% url 'crm:schedule_lesson_create_drawer' %}" hx-target="#createLessonDrawerContent" hx-swap="outerHTML" hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('createLessonDrawer').classList.add('is-open')">Создать занятие</button>
+        <button class="crm-btn crm-btn--secondary" type="button" hx-get="{% url 'crm:schedule_template_create' %}" hx-target="#scheduleTemplateModal" hx-swap="outerHTML" hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('scheduleTemplateModal').classList.add('is-open')">Стандартное время</button>
+        <button class="crm-btn crm-btn--primary" type="button" onclick="openGenerateDrawerHtmx()">Сгенерировать</button>
+    </div>
+</section>
+
+<form id="scheduleFiltersForm" class="crm-toolbar">
+    <div class="crm-toolbar__filters" style="flex-direction: column; align-items: stretch;">
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <input class="crm-input" id="scheduleDateFrom" name="date_from" type="date" value="{{ request.GET.date_from }}" hx-get="{% url 'crm:schedule_lessons' %}" hx-trigger="change" hx-target="#scheduleListHost" hx-swap="outerHTML" hx-include="#scheduleFiltersForm">
+            <span style="color: var(--crm-muted);">—</span>
+            <input class="crm-input" id="scheduleDateTo" name="date_to" type="date" value="{{ request.GET.date_to }}" hx-get="{% url 'crm:schedule_lessons' %}" hx-trigger="change" hx-target="#scheduleListHost" hx-swap="outerHTML" hx-include="#scheduleFiltersForm">
+            <select id="scheduleGroupFilter" name="group" class="crm-select" hx-get="{% url 'crm:schedule_lessons' %}" hx-trigger="change" hx-target="#scheduleListHost" hx-swap="outerHTML" hx-include="#scheduleFiltersForm">
+                <option value="">Все группы</option>
+                {% for group in groups %}<option value="{{ group.id }}" {% if request.GET.group == group.id|stringformat:'s' %}selected{% endif %}>{{ group.course.name }} · {{ group.number }}</option>{% endfor %}
+            </select>
+        <select id="scheduleStatusFilter" name="status" class="crm-select" hx-get="{% url 'crm:schedule_lessons' %}" hx-trigger="change" hx-target="#scheduleListHost" hx-swap="outerHTML" hx-include="#scheduleFiltersForm">
+            <option value="">Все статусы</option>
+            <option value="scheduled" {% if request.GET.status == 'scheduled' %}selected{% endif %}>Запланировано</option>
+            <option value="completed" {% if request.GET.status == 'completed' %}selected{% endif %}>Прошло</option>
+            <option value="cancelled" {% if request.GET.status == 'cancelled' %}selected{% endif %}>Отменено</option>
+            <option value="rescheduled" {% if request.GET.status == 'rescheduled' %}selected{% endif %}>Перенесено</option>
+        </select>
+        </div>
+        <div style="display: flex; gap: 6px;">
+            <button class="crm-btn crm-btn--secondary crm-btn--sm" type="button" onclick="setDateRangeToday()" hx-get="{% url 'crm:schedule_lessons' %}" hx-target="#scheduleListHost" hx-swap="outerHTML" hx-include="#scheduleFiltersForm">Сегодня</button>
+            <button class="crm-btn crm-btn--secondary crm-btn--sm" type="button" onclick="setDateRangeWeek()" hx-get="{% url 'crm:schedule_lessons' %}" hx-target="#scheduleListHost" hx-swap="outerHTML" hx-include="#scheduleFiltersForm">Неделя</button>
+            <button class="crm-btn crm-btn--secondary crm-btn--sm" type="button" onclick="setDateRangeMonth()" hx-get="{% url 'crm:schedule_lessons' %}" hx-target="#scheduleListHost" hx-swap="outerHTML" hx-include="#scheduleFiltersForm">Месяц</button>
+        </div>
+    </div>
+</form>
+
+<section class="crm-schedule-grid">
+    <article class="crm-data-panel">
+        {% include 'crm/partials/schedule_lessons.html' %}
+    </article>
+
+    <article class="crm-data-panel">
+        {% include 'crm/partials/schedule_templates.html' %}
+    </article>
+</section>
+
+{% include 'crm/partials/schedule_template_modal.html' %}
+
+<aside class="crm-drawer" id="generateDrawer">
+    <div class="crm-drawer__overlay" onclick="closeGenerateDrawer()"></div>
+    <div class="crm-drawer__panel" id="generateDrawerContent">
+        <header class="crm-drawer__header">
+            <div>
+                <h3>Сгенерировать расписание</h3>
+                <p>Занятия создаются по активным стандартным временам</p>
+            </div>
+            <button class="crm-btn-icon" type="button" onclick="closeGenerateDrawer()" aria-label="Закрыть">×</button>
+        </header>
+        <form class="crm-drawer__content crm-form" id="generateForm" hx-post="{% url 'crm:schedule_generate' %}" hx-target="#generateDrawerContent" hx-swap="outerHTML" hx-include="#scheduleFiltersForm">
+            <div class="crm-form-alert" id="generateAlert" hidden></div>
+            <label class="crm-form-field">
+                <span>Дата начала *</span>
+                <input id="generateDateFrom" name="date_from" type="date" required>
+            </label>
+            <label class="crm-form-field">
+                <span>Дата окончания *</span>
+                <input id="generateDateTo" name="date_to" type="date" required>
+            </label>
+            <label class="crm-form-field">
+                <span>Группа</span>
+                <select id="generateGroup" name="group_id">
+                    <option value="">Все группы</option>
+                    {% for group in groups %}<option value="{{ group.id }}">{{ group.course.name }} · {{ group.number }}</option>{% endfor %}
+                </select>
+            </label>
+        </form>
+        <footer class="crm-drawer__footer">
+            <button class="crm-btn crm-btn--secondary" type="button" onclick="closeGenerateDrawer()">Отмена</button>
+            <button class="crm-btn crm-btn--primary" type="submit" form="generateForm" id="generateSubmitBtn">Сгенерировать</button>
+        </footer>
+    </div>
+</aside>
+
+<aside class="crm-drawer" id="lessonDrawer">
+    <div class="crm-drawer__overlay" onclick="closeLessonDrawer()"></div>
+    {% include 'crm/partials/schedule_lesson_drawer.html' %}
+</aside>
+
+<aside class="crm-drawer" id="createLessonDrawer">
+    <div class="crm-drawer__overlay" onclick="closeCreateLessonDrawer()"></div>
+    {% include 'crm/partials/schedule_create_lesson_drawer.html' %}
+</aside>
+{% endblock content %}
+
+{% block scripts %}
+<script src="{% static 'crm/js/schedule.js' %}" defer></script>
+<script>
+    function closeScheduleTemplateModal() {
+        document.getElementById('scheduleTemplateModal')?.classList.remove('is-open');
+    }
+
+    function openGenerateDrawerHtmx() {
+        const today = new Date();
+        const nextMonth = new Date();
+        nextMonth.setDate(today.getDate() + 30);
+        const toDateInput = (date) => date.toISOString().slice(0, 10);
+        document.getElementById('generateDateFrom').value = toDateInput(today);
+        document.getElementById('generateDateTo').value = toDateInput(nextMonth);
+        document.getElementById('generateDrawer')?.classList.add('is-open');
+    }
+
+    document.body.addEventListener('htmx:afterSwap', (event) => {
+        if (event.detail?.target?.id === 'createLessonDrawerContent' && !event.detail.xhr?.responseText?.includes('crm-form-alert')) {
+            document.getElementById('createLessonDrawer')?.classList.remove('is-open');
+        }
+    });
+
+    document.body.addEventListener('htmx:afterSwap', (event) => {
+        if (event.detail?.target?.id === 'scheduleTemplatesHost' && !event.detail.xhr?.responseText?.includes('crm-form-alert')) {
+            closeScheduleTemplateModal();
+        }
+    });
+</script>
+{% endblock scripts %}

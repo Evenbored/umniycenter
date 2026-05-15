@@ -1,0 +1,88 @@
+<div class="crm-drawer__panel crm-drawer__panel--wide" id="teacherDrawerContent" x-data="{ editing: {{ selected_teacher|yesno:'false,true' }} }">
+    <header class="crm-drawer__header">
+        <div>
+            <h3 id="teacherDrawerTitle">{% if selected_teacher %}Карточка учителя{% else %}Добавить учителя{% endif %}</h3>
+            <p id="teacherDrawerSubtitle">{% if selected_teacher %}@{{ selected_teacher.username }}{% else %}Создание нового преподавателя в системе{% endif %}</p>
+        </div>
+        <button class="crm-btn-icon" type="button" onclick="closeTeacherDetailsDrawer()" aria-label="Закрыть"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </header>
+
+    <div class="crm-drawer__content">
+        {% if selected_teacher %}
+            <div class="crm-student-profile">
+                <div class="crm-student-profile__avatar" id="teacherDrawerInitials">{{ selected_teacher.first_name|first|default:'У' }}{{ selected_teacher.last_name|first }}</div>
+                <div><h4 id="teacherDrawerName">{{ selected_teacher.get_full_name|default:selected_teacher.username }}</h4><span id="teacherDrawerStatus">{% if selected_teacher.is_active %}<span class="crm-status-badge crm-status-badge--active">Активный</span>{% else %}<span class="crm-status-badge crm-status-badge--archive">Архивный</span>{% endif %}</span></div>
+            </div>
+
+            <div class="crm-drawer-section" x-bind:hidden="editing">
+                <h4>Контакты</h4>
+                <div class="crm-info-grid">
+                    <div class="crm-info-item"><span class="crm-info-label">Телефон</span><strong>{{ selected_teacher.phone|default:'-' }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Email</span><strong>{{ selected_teacher.email|default:'-' }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Город</span><strong>{{ selected_teacher.city|default:'-' }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Дата регистрации</span><strong>{{ selected_teacher.date_joined|date:'d.m.Y' }}</strong></div>
+                </div>
+            </div>
+        {% endif %}
+
+        <form class="crm-drawer-section crm-student-edit-form" id="teacherEditForm" hx-post="{% if selected_teacher %}{% url 'crm:teacher_save_edit' selected_teacher.id %}{% else %}{% url 'crm:teacher_save_create' %}{% endif %}" hx-target="#teacherDrawerContent" hx-swap="outerHTML" x-bind:hidden="!editing" {% if selected_teacher %}hidden{% endif %}>
+            {% csrf_token %}
+            <h4>{% if selected_teacher %}Редактирование учителя{% else %}Данные учителя{% endif %}</h4>
+            <div class="crm-form-grid">
+                <label class="crm-form-field"><span>Фамилия *</span><input name="last_name" type="text" required value="{{ teacher_form.last_name }}"></label>
+                <label class="crm-form-field"><span>Имя *</span><input name="first_name" type="text" required value="{{ teacher_form.first_name }}"></label>
+                <label class="crm-form-field"><span>Логин *</span><input name="username" type="text" required value="{{ teacher_form.username }}"></label>
+                {% if not selected_teacher %}<label class="crm-form-field"><span>Временный пароль *</span><input name="password" type="text" required value="{{ teacher_form.password }}"></label>{% endif %}
+                <label class="crm-form-field"><span>Телефон</span><input name="phone" type="tel" value="{{ teacher_form.phone }}"></label>
+                <label class="crm-form-field"><span>Email</span><input name="email" type="email" value="{{ teacher_form.email }}"></label>
+                <label class="crm-form-field"><span>Город</span><input name="city" type="text" value="{{ teacher_form.city }}"></label>
+                <label class="crm-form-field"><span>Страна</span><input name="country" type="text" value="{{ teacher_form.country }}"></label>
+                <label class="crm-form-field"><span>Пол</span><select name="sex"><option value="0" {% if teacher_form.sex == '0' %}selected{% endif %}>Мужской</option><option value="1" {% if teacher_form.sex == '1' %}selected{% endif %}>Женский</option></select></label>
+                {% if selected_teacher %}<label class="crm-form-field"><span>Статус</span><select name="is_active"><option value="true" {% if teacher_form.is_active %}selected{% endif %}>Активный</option><option value="false" {% if not teacher_form.is_active %}selected{% endif %}>Архивный</option></select></label>{% endif %}
+            </div>
+            <div class="crm-form-alert" id="teacherEditAlert" {% if not form_error %}hidden{% endif %}>{{ form_error|default:'' }}</div>
+        </form>
+
+        {% if selected_teacher %}
+            <div class="crm-drawer-section" x-bind:hidden="editing">
+                <h4>Группы учителя</h4>
+                {% if teacher_groups %}
+                    <div class="crm-teacher-groups-grid">
+                        {% for group in teacher_groups %}
+                            <article class="crm-teacher-group-card">
+                                <div class="crm-teacher-group-card__icon">{{ group.number|first|upper|default:'G' }}</div>
+                                <div class="crm-teacher-group-card__body">
+                                    <div class="crm-teacher-group-card__topline">
+                                        <strong>{{ group.number }}</strong>
+                                        {% if group.is_active %}
+                                            <span class="crm-teacher-group-card__status is-active">Активная</span>
+                                        {% else %}
+                                            <span class="crm-teacher-group-card__status is-archive">Архивная</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="crm-teacher-group-card__course">{{ group.course.name }}</div>
+                                    <div class="crm-teacher-group-card__meta">
+                                        <span>ID {{ group.id }}</span>
+                                        <span>{{ group.studentgroups_set.count }} учеников</span>
+                                    </div>
+                                </div>
+                            </article>
+                        {% endfor %}
+                    </div>
+                {% else %}<p style="color: var(--crm-muted); font-size: 13px;">Учитель не назначен ни в одну группу</p>{% endif %}
+            </div>
+            <div class="crm-drawer-section" x-bind:hidden="editing">
+                <h4>Расписание занятий</h4>
+                {% if teacher_schedule %}
+                    {% for lesson in teacher_schedule %}<div class="crm-list-item"><div><strong>{{ lesson.title }}</strong><span>{{ lesson.classdateStart|date:'d.m.Y' }} · {{ lesson.classdateStart|date:'H:i' }}-{{ lesson.classdateEnd|time:'H:i' }}</span></div></div>{% endfor %}
+                {% else %}<p style="color: var(--crm-muted); font-size: 13px;">Нет запланированных занятий</p>{% endif %}
+            </div>
+        {% endif %}
+    </div>
+
+    <footer class="crm-drawer__footer">
+        <button class="crm-btn crm-btn--secondary" type="button" onclick="closeTeacherDetailsDrawer()">{% if selected_teacher %}Закрыть{% else %}Отмена{% endif %}</button>
+        {% if selected_teacher %}<button class="crm-btn crm-btn--secondary" type="button" @click="editing = false" x-bind:hidden="!editing" hidden>Отмена</button><button class="crm-btn crm-btn--primary" type="button" @click="editing = true" x-bind:hidden="editing">Редактировать</button>{% endif %}
+        <button class="crm-btn crm-btn--primary" type="submit" form="teacherEditForm" x-bind:hidden="!editing" {% if selected_teacher %}hidden{% endif %}>{% if selected_teacher %}Сохранить{% else %}Сохранить учителя{% endif %}</button>
+    </footer>
+</div>

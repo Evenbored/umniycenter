@@ -1,0 +1,124 @@
+<div class="crm-drawer__panel crm-drawer__panel--wide" id="studentDrawerContent" x-data="{ editing: {{ selected_student|yesno:'false,true' }}, addParent() { const list = this.$refs.parentsList; if (list.children.length >= 2) return; const html = this.$refs.parentTemplate.innerHTML.replaceAll('__index__', Date.now()); list.insertAdjacentHTML('beforeend', html); } }">
+    <header class="crm-drawer__header">
+        <div>
+            <h3 id="studentDrawerTitle">{% if selected_student %}Ученик #{{ selected_student.id }}{% else %}Добавить ученика{% endif %}</h3>
+            <p id="studentDrawerSubtitle">{% if selected_student %}{{ selected_student.username }}{% else %}Создание ученика без заявки с сайта{% endif %}</p>
+        </div>
+        <button class="crm-btn-icon" type="button" onclick="closeStudentDetailsDrawer()" aria-label="Закрыть">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+    </header>
+
+    <div class="crm-drawer__content">
+        {% if selected_student %}
+            <div class="crm-student-profile">
+                <div class="crm-student-profile__avatar" id="studentDrawerInitials">{{ selected_student.first_name|first|default:'У' }}{{ selected_student.last_name|first }}</div>
+                <div>
+                    <h4 id="studentDrawerName">{{ selected_student.get_full_name|default:selected_student.username }}</h4>
+                    <span id="studentDrawerStatus">{% if selected_student.is_active %}<span class="crm-status-badge crm-status-badge--active">Активный</span>{% else %}<span class="crm-status-badge crm-status-badge--archive">Архивный</span>{% endif %}</span>
+                </div>
+            </div>
+
+            <div class="crm-drawer-section" x-bind:hidden="editing">
+                <h4>Контакты</h4>
+                <div class="crm-info-grid">
+                    <div class="crm-info-item"><span class="crm-info-label">Телефон ученика</span><strong>{{ selected_student.phone|default:'-' }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Email</span><strong>{{ selected_student.email|default:'-' }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Город</span><strong>{{ selected_student.city|default:'-' }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Дата регистрации</span><strong>{{ selected_student.date_joined|date:'d.m.Y' }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Источник</span><strong>{% if selected_student.student_profile.source %}{{ selected_student.student_profile.get_source_display }}{% else %}-{% endif %}</strong></div>
+                </div>
+            </div>
+
+            <div class="crm-drawer-section" x-bind:hidden="editing">
+                <h4>Родители</h4>
+                {% if student_parents %}
+                    {% for parent in student_parents %}
+                        <div class="crm-parent-card"><div class="crm-parent-card__header"><strong>Родитель {{ forloop.counter }}</strong><span>{{ parent.get_full_name|default:parent.username }}</span></div><div class="crm-info-grid" style="margin-top: 8px;"><div class="crm-info-item"><span class="crm-info-label">Телефон</span><strong>{{ parent.phone|default:'-' }}</strong></div><div class="crm-info-item"><span class="crm-info-label">Email</span><strong>{{ parent.email|default:'-' }}</strong></div></div></div>
+                    {% endfor %}
+                {% else %}
+                    <p style="color: var(--crm-muted); font-size: 13px;">У ученика нет привязанных родителей</p>
+                {% endif %}
+            </div>
+
+            <div class="crm-drawer-section" x-bind:hidden="editing">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h4 style="margin: 0;">Подписки</h4>
+                    <button class="crm-btn crm-btn--primary crm-btn--sm" type="button" hx-get="{% url 'crm:student_buy_tariff_modal' selected_student.id %}" hx-target="#buyTariffModal" hx-swap="outerHTML" hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('buyTariffModal').classList.add('is-open')">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                        Купить тариф
+                    </button>
+                </div>
+                {% if student_subscriptions %}
+                    {% for sub in student_subscriptions %}
+                        <div class="crm-subscription-card"><div class="crm-subscription-card__header"><div><div class="crm-subscription-card__title">{{ sub.tariff.name }}</div><div class="crm-subscription-card__course">{{ sub.tariff.course.name }}</div></div><span class="crm-status-badge {% if sub.is_valid %}crm-status-badge--active{% else %}crm-status-badge--archive{% endif %}">{% if sub.is_valid %}Активна{% else %}Неактивна{% endif %}</span></div><div class="crm-subscription-progress-text">Использовано: {{ sub.lessons_used }} из {{ sub.lessons_total }} занятий (осталось: <strong>{{ sub.lessons_remaining }}</strong>)</div><div class="crm-subscription-card__dates"><span>Начало: {{ sub.start_date|date:'d.m.Y' }}</span><span>Окончание: {{ sub.end_date|date:'d.m.Y' }}</span></div></div>
+                    {% endfor %}
+                {% else %}
+                    <p style="color: var(--crm-muted); font-size: 13px;">У ученика нет активных подписок</p>
+                {% endif %}
+            </div>
+
+            <div class="crm-drawer-section" x-bind:hidden="editing">
+                <h4>История платежей</h4>
+                {% include 'crm/partials/student_payments.html' %}
+            </div>
+        {% endif %}
+
+        <form class="crm-drawer-section crm-student-edit-form" id="studentEditForm" hx-post="{% if selected_student %}{% url 'crm:student_save_edit' selected_student.id %}{% else %}{% url 'crm:student_save_create' %}{% endif %}" hx-target="#studentDrawerContent" hx-swap="outerHTML" x-bind:hidden="!editing" {% if selected_student %}hidden{% endif %}>
+            {% csrf_token %}
+            <h4>{% if selected_student %}Редактирование ученика{% else %}Данные ученика{% endif %}</h4>
+            <div class="crm-form-grid">
+                <label class="crm-form-field"><span>Фамилия *</span><input name="last_name" type="text" required value="{{ student_form.last_name }}"></label>
+                <label class="crm-form-field"><span>Имя *</span><input name="first_name" type="text" required value="{{ student_form.first_name }}"></label>
+                <label class="crm-form-field"><span>Логин *</span><input name="username" type="text" required value="{{ student_form.username }}"></label>
+                {% if not selected_student %}<label class="crm-form-field"><span>Временный пароль *</span><input name="password" type="text" required value="{{ student_form.password }}"></label>{% endif %}
+                <label class="crm-form-field"><span>Телефон ученика</span><input name="phone" type="tel" value="{{ student_form.phone }}"></label>
+                <label class="crm-form-field"><span>Email</span><input name="email" type="email" value="{{ student_form.email }}"></label>
+                <label class="crm-form-field"><span>Город</span><input name="city" type="text" value="{{ student_form.city }}"></label>
+                <label class="crm-form-field"><span>Страна</span><input name="country" type="text" value="{{ student_form.country }}"></label>
+                <label class="crm-form-field"><span>Пол *</span><select name="sex" required><option value="">Выберите пол</option><option value="0" {% if student_form.sex == '0' %}selected{% endif %}>Мужской</option><option value="1" {% if student_form.sex == '1' %}selected{% endif %}>Женский</option></select></label>
+                {% if selected_student %}<label class="crm-form-field"><span>Статус</span><select name="is_active"><option value="true" {% if student_form.is_active %}selected{% endif %}>Активный</option><option value="false" {% if not student_form.is_active %}selected{% endif %}>Архивный</option></select></label>{% endif %}
+                <label class="crm-form-field"><span>Источник</span><select name="source"><option value="">Не указан</option>{% for value, label in source_choices %}<option value="{{ value }}" {% if student_form.source == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+            </div>
+
+            <div class="crm-section-row" style="margin-top: 24px;"><h4 style="margin: 0;">Родители</h4><button class="crm-btn crm-btn--secondary crm-btn--sm" type="button" @click="addParent()">Добавить родителя</button></div>
+            <div x-ref="parentsList" id="studentEditParentsList">
+                {% if selected_student %}
+                    {% for parent in student_parents %}
+                        <div class="crm-parent-edit-card"><input type="hidden" name="parent_id" value="{{ parent.id }}"><h5 style="margin: 0 0 12px; font-size: 14px;">Родитель {{ forloop.counter }}: {{ parent.get_full_name|default:parent.username }}</h5><div class="crm-form-grid"><label class="crm-form-field"><span>Фамилия</span><input name="parent_last_name" type="text" value="{{ parent.last_name }}" required></label><label class="crm-form-field"><span>Имя</span><input name="parent_first_name" type="text" value="{{ parent.first_name }}" required></label><label class="crm-form-field"><span>Телефон</span><input name="parent_phone" type="tel" value="{{ parent.phone|default:'' }}"></label><label class="crm-form-field"><span>Email</span><input name="parent_email" type="email" value="{{ parent.email|default:'' }}"></label></div></div>
+                    {% endfor %}
+                {% else %}
+                    <div class="crm-parent-edit-card"><input type="hidden" name="parent_id" value=""><h5 style="margin: 0 0 12px; font-size: 14px;">Родитель</h5><div class="crm-form-grid"><label class="crm-form-field"><span>Фамилия</span><input name="parent_last_name" type="text" value="{{ student_form.parent_last_name }}" required></label><label class="crm-form-field"><span>Имя</span><input name="parent_first_name" type="text" value="{{ student_form.parent_first_name }}" required></label><label class="crm-form-field"><span>Телефон</span><input name="parent_phone" type="tel" value="{{ student_form.parent_phone }}"></label><label class="crm-form-field"><span>Email</span><input name="parent_email" type="email" value="{{ student_form.parent_email }}"></label></div></div>
+                {% endif %}
+            </div>
+            <template x-ref="parentTemplate"><div class="crm-parent-edit-card"><input type="hidden" name="parent_id" value=""><h5 style="margin: 0 0 12px; font-size: 14px;">Новый родитель</h5><div class="crm-form-grid"><label class="crm-form-field"><span>Фамилия</span><input name="parent_last_name" type="text" required></label><label class="crm-form-field"><span>Имя</span><input name="parent_first_name" type="text" required></label><label class="crm-form-field"><span>Телефон</span><input name="parent_phone" type="tel"></label><label class="crm-form-field"><span>Email</span><input name="parent_email" type="email"></label></div></div></template>
+            <div class="crm-form-alert" id="studentEditAlert" {% if not form_error %}hidden{% endif %}>{{ form_error|default:'' }}</div>
+        </form>
+
+        {% if selected_student %}
+            <div class="crm-drawer-section" x-bind:hidden="editing">
+                <h4>Группы ученика</h4>
+                <div class="crm-student-groups" id="studentDrawerGroups">
+                    {% if selected_student.student_group_memberships %}
+                        {% for membership in selected_student.student_group_memberships %}
+                            <div class="crm-student-group-item"><div class="crm-student-group-item__info"><strong>{{ membership.group }}</strong><span>{{ membership.group.course.name }} • {{ membership.group.teacher }}</span></div><button class="crm-icon-btn" type="button" hx-post="{% url 'crm:student_remove_group' selected_student.id membership.id %}" hx-target="#studentDrawerContent" hx-swap="outerHTML" hx-confirm="Удалить ученика из группы?" title="Удалить из группы"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="crm-table-empty">Ученик пока не состоит в группах</div>
+                    {% endif %}
+                </div>
+                <form class="crm-add-group-form" hx-post="{% url 'crm:student_add_group' selected_student.id %}" hx-target="#studentDrawerContent" hx-swap="outerHTML">
+                    {% csrf_token %}
+                    <select class="crm-select" name="group_id" required><option value="">Выберите группу</option>{% for group in available_groups %}<option value="{{ group.id }}">{{ group.course.name }} · {{ group.number }} · {{ group.teacher|default:'Без преподавателя' }}</option>{% endfor %}</select>
+                    <button class="crm-btn crm-btn--primary" type="submit"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Добавить в группу</button>
+                </form>
+            </div>
+        {% endif %}
+    </div>
+
+    <footer class="crm-drawer__footer">
+        <button class="crm-btn crm-btn--secondary" type="button" onclick="closeStudentDetailsDrawer()">{% if selected_student %}Закрыть{% else %}Отмена{% endif %}</button>
+        {% if selected_student %}<button class="crm-btn crm-btn--secondary" type="button" @click="editing = false" x-bind:hidden="!editing" hidden>Отмена</button><button class="crm-btn crm-btn--primary" type="button" @click="editing = true" x-bind:hidden="editing">Редактировать</button>{% endif %}
+        <button class="crm-btn crm-btn--primary" type="submit" form="studentEditForm" x-bind:hidden="!editing" {% if selected_student %}hidden{% endif %}>{% if selected_student %}Сохранить{% else %}Сохранить ученика{% endif %}</button>
+    </footer>
+</div>

@@ -1,0 +1,91 @@
+@import url("/static/crm/css/students.css");
+
+.crm-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.crm-form-field,
+.crm-checkbox-line {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.crm-form-field span,
+.crm-checkbox-line span {
+    color: var(--crm-muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.crm-form-field input,
+.crm-form-field select,
+.crm-form-field textarea {
+    width: 100%;
+    border: 1px solid var(--crm-border);
+    border-radius: 13px;
+    padding: 12px 14px;
+    background: var(--crm-surface-soft);
+    color: var(--crm-text);
+    font: inherit;
+    font-size: 14px;
+    outline: 0;
+    transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
+}
+
+.crm-form-field textarea {
+    resize: vertical;
+}
+
+.crm-form-field input:focus,
+.crm-form-field select:focus,
+.crm-form-field textarea:focus {
+    border-color: var(--crm-primary);
+    background: var(--crm-surface);
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+}
+
+.crm-form-field--full {
+    margin-top: 14px;
+}
+
+.crm-checkbox-line {
+    justify-content: center;
+    flex-direction: row;
+    align-items: center;
+    min-height: 44px;
+    border: 1px solid var(--crm-border);
+    border-radius: 13px;
+    padding: 12px 14px;
+    background: var(--crm-surface-soft);
+}
+
+.crm-checkbox-line input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--crm-primary);
+}
+
+.crm-tariff-chip {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 6px 10px;
+    background: #eef2ff;
+    color: #3730a3;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.crm-tariff-price {
+    font-weight: 800;
+    color: var(--crm-text);
+}
+
+@media (max-width: 640px) {
+    .crm-form-grid {
+        grid-template-columns: 1fr;
+    }
+}

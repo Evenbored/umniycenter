@@ -1,0 +1,29 @@
+# Testing Framework
+pytest==8.3.4
+pytest-django==4.9.0
+pytest-cov==6.0.0
+pytest-mock==3.14.0
+pytest-xdist==3.6.1  # Parallel test execution
+
+# Test Data Generation
+factory-boy==3.3.1
+faker==33.1.0
+
+# Time Manipulation
+freezegun==1.5.1
+
+# HTTP Mocking
+responses==0.25.3
+requests-mock==1.12.1
+
+# Code Quality
+flake8==7.1.1
+black==24.10.0
+isort==5.13.2
+
+# Security Scanning
+bandit==1.8.0
+safety==3.2.11
+
+# Coverage
+coverage[toml]==7.6.9

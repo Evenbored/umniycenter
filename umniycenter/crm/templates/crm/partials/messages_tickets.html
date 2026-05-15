@@ -1,0 +1,27 @@
+<div id="ticketsListHost">
+    <div class="crm-messages-list" id="ticketsList">
+        {% if tickets %}
+            {% for ticket in tickets %}
+                {% with last=ticket.messages.last %}
+                <div class="crm-ticket-item {% if selected_ticket and selected_ticket.id == ticket.id %}active{% endif %}"
+                     data-ticket-id="{{ ticket.id }}"
+                     hx-get="{% url 'crm:messages_chat' ticket.id %}"
+                     hx-target="#chatHost"
+                     hx-swap="outerHTML">
+                    <div class="crm-ticket-item__avatar">{{ ticket.parent.first_name|first|default:'Р' }}{{ ticket.parent.last_name|first }}</div>
+                    <div class="crm-ticket-item__content">
+                        <div class="crm-ticket-item__header">
+                            <span class="crm-ticket-item__name">{{ ticket.parent.get_full_name|default:ticket.parent.username }}</span>
+                        </div>
+                        <div class="crm-ticket-item__subject">{{ ticket.get_category_display|default:ticket.subject }}</div>
+                        <div class="crm-ticket-item__preview">{% if last %}{{ last.content|truncatechars:80 }}{% else %}Нет сообщений{% endif %}</div>
+                    </div>
+                    <div class="crm-ticket-item__badges"><span class="crm-ticket-status crm-ticket-status--{{ ticket.status }}">{{ ticket.get_status_display }}</span>{% if ticket.unread_count_for_admin %}<span class="crm-ticket-unread">{{ ticket.unread_count_for_admin }}</span>{% endif %}</div>
+                </div>
+                {% endwith %}
+            {% endfor %}
+        {% else %}
+            <div class="crm-messages-empty"><svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><p>Нет обращений</p></div>
+        {% endif %}
+    </div>
+</div>

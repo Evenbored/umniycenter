@@ -1,0 +1,595 @@
+.grd__wrap {
+    width: 100%;
+    margin: 0 auto;
+    background: white;
+    border-radius: 20px;
+    padding: 32px;
+    box-shadow: 0 8px 30px rgba(255, 107, 74, 0.1);
+}
+
+/* ── HEADER ── */
+.grd__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #FFE5DD;
+}
+
+.grd__title {
+    font-family: 'Lobster Two', cursive;
+    font-size: 28px;
+    font-weight: 700;
+    color: #FF6B4A;
+}
+
+.grd__btn-excel {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border: 2px solid #FF6B4A;
+    border-radius: 50px;
+    background: #fff;
+    color: #FF6B4A;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.grd__btn-excel:hover {
+    background: #FF6B4A;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 107, 74, 0.3);
+}
+
+.grd__btn-excel svg {
+    flex-shrink: 0;
+}
+
+/* ── FILTERS ── */
+.grd__filters {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    row-gap: 18px;
+    column-gap: 40px;
+    margin-bottom: 20px;
+}
+
+.grd__filter-row {
+    display: flex;
+    align-items: center;
+}
+
+.grd__filter-label {
+    width: 100px;
+    flex-shrink: 0;
+    text-align: right;
+    padding-right: 16px;
+    font-size: 14px;
+    color: #2C3E50;
+    font-weight: 600;
+}
+
+.grd__field {
+    flex: 1;
+    position: relative;
+}
+
+.grd__field select,
+.grd__field input[type="text"],
+.std__date {
+    width: 100%;
+    height: 44px;
+    padding: 0 40px 0 16px;
+    border: 2px solid #FFE5DD;
+    border-radius: 12px;
+    background: #FFF8F6;
+    font-size: 14px;
+    color: #2C3E50;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    font-family: 'Heebo', sans-serif;
+}
+
+.grd__field select:focus,
+.grd__field input[type="text"]:focus {
+    border-color: #FF6B4A;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(255, 107, 74, 0.1);
+}
+
+.grd__field input[type="text"] {
+    cursor: text;
+    color: #999;
+}
+
+.grd__field input[type="text"]::placeholder {
+    color: #999;
+}
+
+.grd__field--sel::after {
+    content: '';
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 7px solid #FF6B4A;
+    pointer-events: none;
+}
+
+.grd__field--srch::after {
+    content: '';
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='%23FF6B4A' stroke-width='2' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") center/contain no-repeat;
+    pointer-events: none;
+}
+
+.grd__field select.grd__field--disabled {
+    color: #bbb;
+    background: #fafafa;
+    cursor: default;
+}
+
+/* ── RESET ── */
+.grd__btn-reset {
+    display: inline-flex;
+    align-items: center;
+    padding: 10px 24px;
+    border: 2px solid #FF6B4A;
+    border-radius: 50px;
+    background: transparent;
+    color: #FF6B4A;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 24px;
+    transition: all 0.3s ease;
+}
+
+.grd__btn-reset:hover {
+    background: #FF6B4A;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 107, 74, 0.3);
+}
+
+/* ── CARD LIST ── */
+.grd__list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.grd__card {
+    background: #FFF8F6;
+    border: 2px solid #FFE5DD;
+    border-radius: 16px;
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 310px 1fr 230px 48px;
+    align-items: center;
+    gap: 0;
+    min-height: 100px;
+    transition: all 0.3s ease;
+}
+
+.grd__card:hover {
+    border-color: #FF6B4A;
+    box-shadow: 0 5px 20px rgba(255, 107, 74, 0.15);
+    transform: translateY(-2px);
+}
+
+/* card – col left */
+.grd__card-name {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 12px;
+    text-decoration: none;
+    color: #FF6B4A;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.3;
+    transition: color 0.3s ease;
+}
+
+.grd__card-name:hover {
+    color: #FF8B6D;
+    text-decoration: underline;
+}
+
+.grd__card-name-icon {
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.grd__card-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-left: 28px;
+}
+
+.grd__meta-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #5A6C7D;
+}
+
+.grd__meta-row svg {
+    flex-shrink: 0;
+}
+
+.grd__meta-link {
+    color: #FF6B4A;
+    font-weight: 600;
+}
+
+.grd__meta-green {
+    color: #22c55e;
+    font-weight: 600;
+}
+
+.grd__meta-dark {
+    color: #2C3E50;
+    font-weight: 600;
+}
+
+/* card – col center */
+.grd__card-center {
+    padding-left: 28px;
+    border-left: 2px solid #FFE5DD;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* card – col teacher */
+.grd__card-teacher {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding-left: 20px;
+    border-left: 2px solid #FFE5DD;
+}
+
+.grd__teacher-ava {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #FF6B4A, #FF8B6D);
+}
+
+.grd__teacher-lbl {
+    font-size: 12px;
+    color: #999;
+    margin-bottom: 4px;
+}
+
+.grd__teacher-name {
+    color: #FF6B4A;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    display: block;
+    transition: color 0.3s ease;
+}
+
+.grd__teacher-name:hover {
+    color: #FF8B6D;
+    text-decoration: underline;
+}
+
+/* card – col dots */
+.grd__card-dots {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    position: relative;
+}
+
+.grd__btn-dots {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 2px solid #FFE5DD;
+    background: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.grd__btn-dots:hover {
+    border-color: #FF6B4A;
+    color: #FF6B4A;
+    transform: scale(1.1);
+}
+
+.grd__dropdown {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 42px;
+    background: #fff;
+    border: 2px solid #FFE5DD;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(255, 107, 74, 0.15);
+    min-width: 180px;
+    z-index: 200;
+    overflow: hidden;
+}
+
+.grd__dropdown.grd__dropdown--open {
+    display: block;
+}
+
+.grd__dropdown a {
+    display: block;
+    padding: 12px 18px;
+    font-size: 14px;
+    color: #2C3E50;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.grd__dropdown a:hover {
+    background: #FFF8F6;
+    color: #FF6B4A;
+}
+
+.grd__dropdown a.grd__dropdown-danger {
+    color: #ef4444;
+}
+
+.grd__dropdown a.grd__dropdown-danger:hover {
+    background: #fee;
+}
+
+/* ── EMPTY ── */
+.grd__empty {
+    text-align: center;
+    padding: 60px 0;
+    color: #999;
+    font-size: 16px;
+}
+
+/* ── FOOTER / PAGINATION ── */
+.grd__footer {
+    margin-top: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #2C3E50;
+}
+
+.grd__pg-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    border: 2px solid #FFE5DD;
+    background: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+    transition: all 0.3s ease;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.grd__pg-btn:hover:not(:disabled) {
+    border-color: #FF6B4A;
+    color: #FF6B4A;
+    transform: translateY(-2px);
+}
+
+.grd__pg-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+
+.grd__pg-btn--active {
+    background: linear-gradient(135deg, #FF6B4A, #FF8B6D);
+    border-color: #FF6B4A;
+    color: #fff !important;
+    box-shadow: 0 4px 12px rgba(255, 107, 74, 0.3);
+}
+
+.grd__pg-sep {
+    color: #999;
+    padding: 0 4px;
+    font-weight: 400;
+    font-size: 14px;
+}
+
+/* ── STUDENTS PAGE ── */
+.std__period-wrap {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 20px 1fr;
+    align-items: center;
+    gap: 10px;
+}
+
+.std__date {
+    padding-right: 16px;
+    color: #2C3E50;
+}
+
+.std__date-separator {
+    text-align: center;
+    color: #999;
+    font-weight: 600;
+}
+
+.std__period-link-wrap {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+.std__period-link-wrap button {
+    border: 0;
+    background: transparent;
+    color: #FF6B4A;
+    font-size: 13px;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.std__period-link-wrap button:hover {
+    color: #FF8B6D;
+}
+
+.std__period-link-wrap button.std__period-active {
+    color: #FF6B4A;
+    font-weight: 700;
+}
+
+.std__card {
+    grid-template-columns: 45% 1fr 210px 48px;
+}
+
+.std__student-heading {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.std__avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #FF6B4A, #FF8B6D);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.std__student-name {
+    margin-bottom: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #FF6B4A;
+}
+
+.std__meta {
+    padding-left: 68px;
+}
+
+.std__student-center {
+    border-left: 0;
+    padding-left: 0;
+}
+
+.std__teacher-col {
+    border-left: 0;
+}
+
+.std__rating {
+    display: flex;
+    gap: 14px;
+    color: #2C3E50;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+@media (max-width: 1100px) {
+    .grd__filters,
+    .std__filters {
+        grid-template-columns: 1fr;
+    }
+
+    .std__card,
+    .grd__card {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .grd__card-center,
+    .grd__card-teacher,
+    .std__student-center,
+    .std__teacher-col {
+        border-left: 0;
+        padding-left: 0;
+    }
+
+    .grd__card-dots {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 768px) {
+    .grd__wrap {
+        padding: 20px;
+        border-radius: 15px;
+    }
+
+    .grd__header {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+
+    .grd__title {
+        font-size: 24px;
+    }
+
+    .grd__btn-excel {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .grd__filter-label {
+        width: 80px;
+        font-size: 13px;
+    }
+
+    .grd__card {
+        padding: 18px;
+    }
+}

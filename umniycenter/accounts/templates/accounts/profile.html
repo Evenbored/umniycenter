@@ -1,0 +1,111 @@
+{% extends 'accounts/trainer_base.html' %}
+
+{% comment %} {% extends 'users/base.html' %}
+
+{% block title %}
+  Your Profile
+{% endblock %}
+
+{% block content %}
+  <h1>Hi, {{ request.user.first_name|upper }} {{ request.user.last_name|upper }}</h1>
+  <div class="profile-section">
+    <h2>Account Details</h2>
+    <p>{{ request.user.first_name }} {{ request.user.last_name }}</p>
+    <p>{{ request.user.email }}</p>
+    <p>{{ request.user.country|default:'Not specified' }}</p>
+    <button hx-get="{% url 'users:edit_account_details' %}" hx-target="#account-details-content" hx-swap="innerHTML">Edit</button>
+    <div id="account-details-content"></div>
+  </div>
+  <a href="{% url 'users:logout' %}" class="link">Log Out</a>
+{% endblock %} {% endcomment %}
+
+{% load static %}
+{% block title %}
+  Ваш профиль
+{% endblock %}
+{% block content %}
+  <div class="header d-flex justify-content-between align-items-start">
+    <div class="uw-banner">
+      <div class="uw-avatar-ring">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Dog_Breeds.jpg/320px-Dog_Breeds.jpg" alt="Avatar" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\'font-size:48px\'>🐾</span>'" />
+      </div>
+      <div class="uw-user-details">
+        <div class="uw-welcome-title">Привет, {{ request.user.first_name }} {{ request.user.last_name }}!&nbsp;😊</div>
+        <div class="uw-org-row">
+          <span class="uw-org-row__icon">🏛️</span>
+          Центр развития интеллекта "Умный", Ломоносов
+        </div>
+        <a class="uw-edit-trigger" href="{% url 'accounts:edit_account_details' %}">Редактировать профиль</a>
+      </div>
+    </div>
+    <div class="tzp-panel">
+      <div class="tzp-title">Список задач</div>
+      <div class="tzp-list" id="tzp-task-list">
+        <div class="tzp-empty" id="tzp-empty-msg">Список задач пуст</div>
+      </div>
+      <input class="tzp-input" id="tzp-input" type="text" placeholder="Добавить задачу" />
+      <div class="tzp-footer">
+        <button class="tzp-add-btn" onclick="tzpAddTask()">Добавить</button>
+        <label class="tzp-important-label"><input type="checkbox" id="tzp-important-check" />Это важно</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="klp-panel">
+    <div class="klp-title">Классы</div>
+    <div class="klp-list">
+      {% for item in schedule %}
+        <div class="klp-item">
+          <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" class="svg-icon__svg">
+            <path d="M19.2188 13.75C19.6502 13.75 20 13.4002 20 12.9688V4.6875C20 2.96438 18.5981 1.5625 16.875 1.5625H15.8594V0.78125C15.8594 0.349766 15.5096 0 15.0781 0C14.6466 0 14.2969 0.349766 14.2969 0.78125V1.5625H10.7422V0.78125C10.7422 0.349766 10.3924 0 9.96094 0C9.52945 0 9.17969 0.349766 9.17969 0.78125V1.5625H5.66406V0.78125C5.66406 0.349766 5.3143 0 4.88281 0C4.45133 0 4.10156 0.349766 4.10156 0.78125V1.5625H3.125C1.40188 1.5625 0 2.96438 0 4.6875V16.875C0 18.5981 1.40188 20 3.125 20H16.875C18.5981 20 20 18.5981 20 16.875C20 16.4435 19.6502 16.0938 19.2188 16.0938C18.7873 16.0938 18.4375 16.4435 18.4375 16.875C18.4375 17.7366 17.7366 18.4375 16.875 18.4375H3.125C2.26344 18.4375 1.5625 17.7366 1.5625 16.875V4.6875C1.5625 3.82594 2.26344 3.125 3.125 3.125H4.10156V3.90625C4.10156 4.33773 4.45133 4.6875 4.88281 4.6875C5.3143 4.6875 5.66406 4.33773 5.66406 3.90625V3.125H9.17969V3.90625C9.17969 4.33773 9.52945 4.6875 9.96094 4.6875C10.3924 4.6875 10.7422 4.33773 10.7422 3.90625V3.125H14.2969V3.90625C14.2969 4.33773 14.6466 4.6875 15.0781 4.6875C15.5096 4.6875 15.8594 4.33773 15.8594 3.90625V3.125H16.875C17.7366 3.125 18.4375 3.82594 18.4375 4.6875V12.9688C18.4375 13.4002 18.7873 13.75 19.2188 13.75Z"></path>
+            <path d="M13.4663 8.178L9.61553 13.5569C9.51037 13.6789 9.37858 13.7052 9.30795 13.7099C9.23522 13.7149 9.09416 13.7054 8.97315 13.5902L6.48018 11.1964C6.16881 10.8976 5.67428 10.9076 5.37557 11.2189C5.07674 11.5301 5.08674 12.0246 5.39795 12.3235L7.89342 14.7196C8.26717 15.0754 8.76608 15.2733 9.27932 15.2733C9.32342 15.2733 9.36764 15.2719 9.41186 15.2689C9.971 15.2316 10.4931 14.9597 10.8441 14.5229C10.8532 14.5116 10.8619 14.5001 10.8704 14.4883L14.7369 9.08749C14.988 8.73667 14.9072 8.24862 14.5564 7.99749C14.2054 7.74636 13.7174 7.82714 13.4663 8.178Z"></path>
+          </svg>
+          <div>
+            <div class="klp-info-name">{{ item.group.course.name }}</div>
+            <div class="klp-info-level">Группа: {{ item.group.number }}</div>
+            <div class="klp-info-time">{{ item.classdateStart|date:'d M H:i' }}-{{ item.classdateEnd|date:'H:i' }}</div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+    <div class="klp-buttons">
+      <button class="klp-btn">Домашняя тренировка</button>
+      <button class="klp-btn">Свободная игра</button>
+    </div>
+  </div>
+
+  <div class="mb-4 d-flex"></div>
+
+  <div>
+    <h2 class="section-title">Сообщения</h2>
+
+    <div class="message-card">
+      <div class="message-avatar">ЕЧ</div>
+      <div class="message-content">
+        <div class="message-sender">Елизавета Чунина</div>
+        <div class="message-date">29 янв. 2024 г.</div>
+        <div class="message-text">Добрый вечер, не можем пойти задачи...</div>
+      </div>
+    </div>
+
+    <div class="message-card">
+      <div class="message-avatar">КК</div>
+      <div class="message-content">
+        <div class="message-sender">Клевик Клевый</div>
+        <div class="message-date">25 янв. 2023 г.</div>
+        <div class="message-text">НЕЙРОМЯЧИКИ, Практикум...</div>
+      </div>
+    </div>
+
+    <div class="message-card">
+      <div class="message-avatar">АЕ</div>
+      <div class="message-content">
+        <div class="message-sender">Артем Елизаров</div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{% static 'js\profile.js' %}"></script>
+{% endblock %}

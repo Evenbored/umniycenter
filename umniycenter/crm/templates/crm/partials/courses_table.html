@@ -1,0 +1,56 @@
+<div class="crm-data-panel__header">
+    <div>
+        <strong id="coursesCount">{{ courses_count }}</strong>
+        <span>курсов найдено</span>
+    </div>
+    <span class="crm-data-panel__hint">Клик по строке открывает редактирование курса</span>
+</div>
+
+<div class="crm-table-wrapper">
+    <table class="crm-table" id="coursesTable">
+        <thead>
+            <tr>
+                <th>Курс</th>
+                <th>ID</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody id="coursesTableBody">
+            {% if courses %}
+                {% for course in courses %}
+                    <tr
+                        hx-get="{% url 'crm:course_drawer_edit' course.id %}"
+                        hx-target="#courseDrawerContent"
+                        hx-swap="outerHTML"
+                        hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('courseDetailsDrawer').classList.add('is-open')"
+                    >
+                        <td>
+                            <div class="crm-table-name">{{ course.name }}</div>
+                        </td>
+                        <td><span class="crm-table-meta">ID {{ course.id }}</span></td>
+                        <td>
+                            <button
+                                class="crm-table-action-btn"
+                                type="button"
+                                hx-get="{% url 'crm:course_drawer_edit' course.id %}"
+                                hx-target="#courseDrawerContent"
+                                hx-swap="outerHTML"
+                                hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('courseDetailsDrawer').classList.add('is-open')"
+                                title="Открыть курс"
+                            >
+                                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="3" class="crm-table-empty">Курсы не найдены. Попробуйте изменить фильтры.</td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>

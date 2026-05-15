@@ -1,0 +1,82 @@
+[
+  {
+    "model": "subscriptions.Tariff",
+    "pk": 1,
+    "fields": {
+      "name": "Пробное занятие",
+      "course": 1,
+      "lessons_count": 1,
+      "validity_days": 7,
+      "price": "500.00",
+      "description": "Одно пробное занятие для знакомства с курсом",
+      "is_active": true,
+      "is_trial": true,
+      "created_at": "2026-01-01T10:00:00Z",
+      "updated_at": "2026-01-01T10:00:00Z"
+    }
+  },
+  {
+    "model": "subscriptions.Tariff",
+    "pk": 2,
+    "fields": {
+      "name": "Базовый (8 занятий)",
+      "course": 1,
+      "lessons_count": 8,
+      "validity_days": 30,
+      "price": "5000.00",
+      "description": "8 занятий в месяц, 2 раза в неделю",
+      "is_active": true,
+      "is_trial": false,
+      "created_at": "2026-01-01T10:00:00Z",
+      "updated_at": "2026-01-01T10:00:00Z"
+    }
+  },
+  {
+    "model": "subscriptions.Tariff",
+    "pk": 3,
+    "fields": {
+      "name": "Стандартный (12 занятий)",
+      "course": 1,
+      "lessons_count": 12,
+      "validity_days": 30,
+      "price": "7000.00",
+      "description": "12 занятий в месяц, 3 раза в неделю",
+      "is_active": true,
+      "is_trial": false,
+      "created_at": "2026-01-01T10:00:00Z",
+      "updated_at": "2026-01-01T10:00:00Z"
+    }
+  },
+  {
+    "model": "subscriptions.Tariff",
+    "pk": 4,
+    "fields": {
+      "name": "Интенсив (16 занятий)",
+      "course": 2,
+      "lessons_count": 16,
+      "validity_days": 30,
+      "price": "9000.00",
+      "description": "16 занятий в месяц, 4 раза в неделю",
+      "is_active": true,
+      "is_trial": false,
+      "created_at": "2026-01-01T10:00:00Z",
+      "updated_at": "2026-01-01T10:00:00Z"
+    }
+  },
+  {
+    "model": "subscriptions.Tariff",
+    "pk": 5,
+    "fields": {
+      "name": "Неактивный тариф",
+      "course": 3,
+      "lessons_count": 8,
+      "validity_days": 30,
+      "price": "4500.00",
+      "description": "Старый тариф, больше не используется",
+      "is_active": false,
+      "is_trial": false,
+      "created_at": "2025-06-01T10:00:00Z",
+      "updated_at": "2025-12-01T10:00:00Z"
+    }
+  }
+]

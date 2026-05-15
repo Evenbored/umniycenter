@@ -1,0 +1,156 @@
+{% extends 'crm/base.html' %}
+{% load static %}
+
+{% block title %}Сообщения - CRM{% endblock title %}
+{% block page_title %}Сообщения{% endblock page_title %}
+
+{% block links %}<link rel="stylesheet" href="{% static 'crm/css/messages.css' %}">{% endblock links %}
+
+{% block content %}
+<div class="crm-messages-layout">
+    <aside class="crm-messages-sidebar">
+        {% include 'crm/partials/messages_sidebar.html' %}
+    </aside>
+    <main class="crm-messages-chat">{% include 'crm/partials/messages_chat.html' %}</main>
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+    (function () {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        let socket;
+
+        function refreshTickets(selectedTicketId) {
+            if (window.htmx) {
+                const params = new URLSearchParams();
+                const search = document.getElementById('ticketsSearch')?.value || '';
+                const status = document.getElementById('messagesStatus')?.value || 'all';
+                const period = document.getElementById('dateFilter')?.value || 'all';
+                if (search) params.set('search', search);
+                if (status) params.set('status', status);
+                if (period) params.set('period', period);
+                const ticketId = selectedTicketId || currentTicketId();
+                if (ticketId) params.set('selected_ticket_id', ticketId);
+                const query = params.toString();
+                htmx.ajax('GET', `{% url "crm:messages_tickets" %}${query ? `?${query}` : ''}`, { target: '#messagesSidebarContent', swap: 'outerHTML' });
+            }
+        }
+
+        function refreshOpenChat(ticketId) {
+            const chat = document.getElementById('chatHost');
+            if (chat?.dataset.ticketId && String(chat.dataset.ticketId) === String(ticketId) && window.htmx) {
+                htmx.ajax('GET', `/crm/messages/${ticketId}/chat/`, { target: '#chatHost', swap: 'outerHTML' });
+            }
+        }
+
+        function updateActiveTicket(ticketId) {
+            document.querySelectorAll('.crm-ticket-item').forEach((item) => {
+                item.classList.toggle('active', String(item.dataset.ticketId) === String(ticketId));
+            });
+        }
+
+        function currentTicketId() {
+            return document.getElementById('chatHost')?.dataset.ticketId || null;
+        }
+
+        function showTyping(ticketId, isTyping) {
+            if (String(currentTicketId()) !== String(ticketId)) return;
+            const indicator = document.getElementById('typingIndicator');
+            if (!indicator) return;
+            indicator.style.display = isTyping ? 'flex' : 'none';
+            if (isTyping) {
+                clearTimeout(window.crmTypingTimeout);
+                window.crmTypingTimeout = setTimeout(() => { indicator.style.display = 'none'; }, 10000);
+            }
+        }
+
+        function markTicketRead(ticketId) {
+            const chat = document.getElementById('chatHost');
+            if (!ticketId || !chat?.dataset.ticketId || String(chat.dataset.ticketId) !== String(ticketId) || !socket || socket.readyState !== WebSocket.OPEN) return;
+            socket.send(JSON.stringify({ type: 'mark_read', ticket_id: Number(ticketId) }));
+        }
+
+        document.body.addEventListener('htmx:afterRequest', (event) => {
+            const el = event.detail?.elt;
+            const xhr = event.detail?.xhr;
+            if (!el || !xhr || xhr.status >= 400) return;
+
+            if (el.matches?.('.crm-ticket-item')) {
+                updateActiveTicket(el.dataset.ticketId);
+                markTicketRead(el.dataset.ticketId);
+            }
+
+            if (el.id === 'ticketsSearch' || el.id === 'dateFilter' || el.id === 'messagesStatus') {
+                updateActiveTicket(currentTicketId());
+            }
+        });
+
+        function connect() {
+            socket = new WebSocket(`${protocol}//${window.location.host}/ws/chat/`);
+            socket.onopen = () => markTicketRead(currentTicketId());
+            socket.onmessage = (event) => {
+                let payload;
+                try { payload = JSON.parse(event.data); } catch (_) { return; }
+                if (payload.type === 'new_message' || payload.type === 'new_ticket_message') {
+                    const ticketId = payload.ticket_id || payload.message?.ticket_id;
+                    refreshTickets(currentTicketId());
+                    refreshOpenChat(ticketId);
+                    document.body.dispatchEvent(new CustomEvent('crm:toast', { detail: { type: 'info', title: 'Новое сообщение', message: 'Поступило новое сообщение в обращении.' } }));
+                    document.body.dispatchEvent(new CustomEvent('crm:refresh-stats'));
+                }
+                if (payload.type === 'typing') {
+                    showTyping(payload.ticket_id, payload.is_typing);
+                }
+                if (payload.type === 'ticket_closed') {
+                    refreshTickets();
+                    refreshOpenChat(payload.ticket?.id);
+                    document.body.dispatchEvent(new CustomEvent('crm:toast', { detail: { type: 'info', title: 'Обращение закрыто', message: 'Статус обращения обновлён.' } }));
+                }
+            };
+            socket.onclose = () => window.setTimeout(connect, 3000);
+        }
+
+        document.body.addEventListener('crm:mark-chat-read', (event) => {
+            markTicketRead(event.detail?.ticketId);
+        });
+
+        document.body.addEventListener('input', (event) => {
+            const input = event.target.closest('.crm-messages-input');
+            const ticketId = currentTicketId();
+            if (!input || !ticketId || !socket || socket.readyState !== WebSocket.OPEN) return;
+            socket.send(JSON.stringify({ type: 'typing', ticket_id: Number(ticketId), is_typing: true }));
+            clearTimeout(window.crmStopTypingTimeout);
+            window.crmStopTypingTimeout = setTimeout(() => {
+                if (socket?.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({ type: 'typing', ticket_id: Number(ticketId), is_typing: false }));
+                }
+            }, 1200);
+        });
+
+        document.body.addEventListener('keydown', (event) => {
+            const input = event.target.closest('.crm-messages-input');
+            if (!input) return;
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                input.closest('form')?.requestSubmit();
+            }
+        });
+
+        document.body.addEventListener('htmx:afterSwap', (event) => {
+            if (event.detail?.target?.id === 'chatHost') {
+                const body = document.getElementById('chatBody');
+                if (body) body.scrollTop = body.scrollHeight;
+                updateActiveTicket(currentTicketId());
+                markTicketRead(currentTicketId());
+            }
+            if (event.detail?.target?.id === 'messagesSidebarContent') {
+                updateActiveTicket(currentTicketId());
+                markTicketRead(currentTicketId());
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', connect);
+    })();
+</script>
+{% endblock scripts %}

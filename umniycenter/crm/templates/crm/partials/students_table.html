@@ -1,0 +1,70 @@
+<div class="crm-data-panel__header">
+    <div>
+        <strong id="studentsCount">{{ students_count }}</strong>
+        <span>учеников найдено</span>
+    </div>
+    <span class="crm-data-panel__hint">Клик по строке открывает карточку ученика</span>
+</div>
+
+<div class="crm-table-wrapper">
+    <table class="crm-table" id="studentsTable">
+        <thead>
+            <tr>
+                <th>Ученик</th>
+                <th>Контакты</th>
+                <th>Город</th>
+                <th>Группы</th>
+                <th>Дата</th>
+                <th>Статус</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody id="studentsTableBody">
+            {% if students %}
+                {% for student in students %}
+                    <tr hx-get="{% url 'crm:student_drawer_edit' student.id %}" hx-target="#studentDrawerContent" hx-swap="outerHTML" hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('studentDetailsDrawer').classList.add('is-open')">
+                        <td>
+                            <div class="crm-table-name">{{ student.get_full_name|default:student.username }}</div>
+                            <span class="crm-table-meta">{{ student.username }}</span>
+                        </td>
+                        <td>
+                            <div>{{ student.phone|default:'-' }}</div>
+                            {% if student.email %}<span class="crm-table-meta">{{ student.email }}</span>{% endif %}
+                        </td>
+                        <td>{{ student.city|default:'-' }}</td>
+                        <td>
+                            {% with memberships=student.student_group_memberships %}
+                                {% if memberships %}
+                                    {% for membership in memberships|slice:":2" %}
+                                        <span class="crm-group-chip">{{ membership.group.course.name }} · {{ membership.group.number }}</span>
+                                    {% endfor %}
+                                    {% if memberships|length > 2 %}<span class="crm-group-chip">+{{ memberships|length|add:"-2" }}</span>{% endif %}
+                                {% else %}
+                                    <span class="crm-table-meta">Без группы</span>
+                                {% endif %}
+                            {% endwith %}
+                        </td>
+                        <td>{{ student.date_joined|date:'d.m.Y' }}</td>
+                        <td>
+                            {% if student.is_active %}
+                                <span class="crm-status-badge crm-status-badge--active">Активный</span>
+                            {% else %}
+                                <span class="crm-status-badge crm-status-badge--archive">Архивный</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button class="crm-table-action-btn" type="button" hx-get="{% url 'crm:student_drawer_edit' student.id %}" hx-target="#studentDrawerContent" hx-swap="outerHTML" hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('studentDetailsDrawer').classList.add('is-open')" title="Открыть карточку">
+                                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                {% endfor %}
+            {% else %}
+                <tr><td colspan="7" class="crm-table-empty">Ученики не найдены. Попробуйте изменить фильтры.</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>

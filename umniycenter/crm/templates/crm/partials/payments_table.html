@@ -1,0 +1,70 @@
+<section class="crm-quick-filters">
+    <div class="crm-checkbox-filter"><span>Сумма оплачено: <strong id="paymentsCompletedAmount">{{ completed_amount|floatformat:0 }} ₽</strong></span></div>
+    <div class="crm-checkbox-filter"><span>Ожидают оплаты: <strong id="paymentsPendingCount">{{ pending_count }}</strong></span></div>
+    <div class="crm-checkbox-filter"><span>Ошибки/отмены: <strong id="paymentsProblemCount">{{ problem_count }}</strong></span></div>
+</section>
+
+<div class="crm-data-panel__header">
+    <div>
+        <strong id="paymentsCount">{{ payments_count }}</strong>
+        <span>платежей найдено</span>
+    </div>
+    <span class="crm-data-panel__hint">Клик по строке открывает подробности платежа</span>
+</div>
+
+<div class="crm-table-wrapper">
+    <table class="crm-table" id="paymentsTable">
+        <thead>
+            <tr>
+                <th>Платеж</th>
+                <th>Сумма</th>
+                <th>Плательщик</th>
+                <th>Ученик и тариф</th>
+                <th>Способ</th>
+                <th>Статус</th>
+                <th>Дата</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody id="paymentsTableBody">
+            {% if payments %}
+                {% for payment in payments %}
+                    <tr hx-get="{% url 'crm:payment_drawer' payment.id %}" hx-target="#paymentDrawerContent" hx-swap="outerHTML" hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('paymentDetailsDrawer').classList.add('is-open')">
+                        <td>
+                            <div class="crm-table-name">Платеж #{{ payment.id }}</div>
+                            <span class="crm-table-meta">{{ payment.transaction_id|default:payment.yookassa_payment_id|default:'Без ID транзакции' }}</span>
+                        </td>
+                        <td><strong>{{ payment.amount|floatformat:0 }} ₽</strong></td>
+                        <td>
+                            <div>{{ payment.parent_name|default:'-' }}</div>
+                            <span class="crm-table-meta">{{ payment.parent_phone|default:payment.parent_email|default:'-' }}</span>
+                        </td>
+                        <td>
+                            <div>{{ payment.subscription_info.student_name|default:'-' }}</div>
+                            <span class="crm-table-meta">{{ payment.subscription_info.tariff_name|default:'-' }} · {{ payment.subscription_info.course_name|default:'-' }}</span>
+                        </td>
+                        <td>{{ payment.payment_method_display|default:payment.payment_method }}</td>
+                        <td>
+                            {% if payment.status == 'completed' %}
+                                <span class="crm-status-badge crm-status-badge--active">{{ payment.status_display }}</span>
+                            {% else %}
+                                <span class="crm-status-badge crm-status-badge--archive">{{ payment.status_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ payment.created_at|date:'d.m.Y H:i' }}</td>
+                        <td>
+                            <button class="crm-table-action-btn" type="button" hx-get="{% url 'crm:payment_drawer' payment.id %}" hx-target="#paymentDrawerContent" hx-swap="outerHTML" hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('paymentDetailsDrawer').classList.add('is-open')" title="Открыть платеж">
+                                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                {% endfor %}
+            {% else %}
+                <tr><td colspan="8" class="crm-table-empty">Платежи не найдены. Попробуйте изменить фильтры.</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>

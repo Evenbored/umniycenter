@@ -1,0 +1,303 @@
+@import url("/static/crm/css/students.css");
+
+.crm-group-profile {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 26px;
+    padding: 18px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #ecfeff, #eef2ff);
+}
+
+.crm-group-profile__icon {
+    width: 62px;
+    height: 62px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--crm-cyan), var(--crm-primary));
+    color: #ffffff;
+    font-size: 20px;
+    font-weight: 900;
+}
+
+.crm-group-profile h4 {
+    margin: 0 0 8px;
+    font-size: 18px;
+}
+
+.crm-group-students {
+    display: grid;
+    gap: 10px;
+}
+
+.crm-group-student {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border: 1px solid var(--crm-border);
+    border-radius: 16px;
+    padding: 12px;
+    background: var(--crm-surface-soft);
+    cursor: pointer;
+    transition: all 0.18s;
+}
+
+.crm-group-student:hover {
+    background: var(--crm-surface);
+    border-color: var(--crm-primary);
+    transform: translateX(4px);
+}
+
+.crm-group-student strong {
+    display: block;
+    font-size: 13px;
+}
+
+.crm-group-student span {
+    display: block;
+    margin-top: 3px;
+    color: var(--crm-muted);
+    font-size: 12px;
+}
+
+.crm-group-student__avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-size: 12px;
+    font-weight: 900;
+    flex-shrink: 0;
+    line-height: 1;
+    text-align: center;
+}
+
+.crm-group-student__main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.crm-group-student__contacts {
+    text-align: right;
+    color: var(--crm-muted);
+    font-size: 12px;
+}
+
+#studentDetailsDrawer {
+    z-index: 120;
+}
+
+.crm-student-profile {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 26px;
+    padding: 18px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #eef2ff, #f8fafc);
+}
+
+.crm-student-profile__avatar {
+    width: 62px;
+    height: 62px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--crm-primary), var(--crm-blue));
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.crm-student-profile h4 {
+    margin: 0 0 8px;
+    font-size: 18px;
+}
+
+.crm-group-edit-form {
+    border: 1px solid var(--crm-border);
+    border-radius: 18px;
+    padding: 18px;
+    background: var(--crm-surface-soft);
+}
+
+.crm-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.crm-form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.crm-form-field span {
+    color: var(--crm-muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.crm-form-field input,
+.crm-form-field select {
+    width: 100%;
+    border: 1px solid var(--crm-border);
+    border-radius: 13px;
+    padding: 12px 14px;
+    background: var(--crm-surface-soft);
+    color: var(--crm-text);
+    font: inherit;
+    font-size: 14px;
+    outline: 0;
+    transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
+}
+
+.crm-form-field input:focus,
+.crm-form-field select:focus {
+    border-color: var(--crm-primary);
+    background: var(--crm-surface);
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+}
+
+.crm-form-alert {
+    margin-top: 12px;
+    border-radius: 14px;
+    padding: 11px 13px;
+    background: #fee2e2;
+    color: #991b1b;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.crm-form-alert.is-success {
+    background: #dcfce7;
+    color: #166534;
+}
+
+@media (max-width: 640px) {
+    .crm-form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.crm-schedule-template-card {
+    border: 1px solid var(--crm-border);
+    border-radius: 14px;
+    padding: 12px;
+    background: var(--crm-surface-soft);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.crm-schedule-template-card:last-child {
+    margin-bottom: 0;
+}
+
+.crm-schedule-template-card__info {
+    flex: 1;
+}
+
+.crm-schedule-template-card__day {
+    font-weight: 800;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.crm-schedule-template-card__time {
+    color: var(--crm-muted);
+    font-size: 12px;
+}
+
+.crm-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.crm-modal.is-open {
+    display: flex;
+}
+
+.crm-modal__overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.crm-modal__content {
+    position: relative;
+    width: 90%;
+    max-width: 500px;
+    background: var(--crm-bg);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.crm-modal__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--crm-border);
+}
+
+.crm-modal__header h3 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.crm-modal__close {
+    width: 32px;
+    height: 32px;
+    border: 0;
+    background: transparent;
+    font-size: 28px;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--crm-muted);
+    transition: color 0.2s;
+}
+
+.crm-modal__close:hover {
+    color: var(--crm-text);
+}
+
+.crm-modal__body {
+    padding: 24px;
+    overflow-y: auto;
+}
+
+.crm-modal__footer {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    padding: 16px 24px;
+    border-top: 1px solid var(--crm-border);
+}

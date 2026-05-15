@@ -1,0 +1,32 @@
+<div id="scheduleListHost" {% if lessons_oob %}hx-swap-oob="outerHTML"{% endif %}>
+    <div class="crm-data-panel__header">
+        <div>
+            <strong id="scheduleCount">{{ lessons|length }}</strong>
+            <span>занятий</span>
+        </div>
+        <span class="crm-data-panel__hint">Ближайшие занятия по выбранному периоду</span>
+    </div>
+    <div class="crm-schedule-list" id="scheduleList">
+        {% if lessons %}
+            {% for lesson in lessons %}
+                <article class="crm-lesson-card" hx-get="{% url 'crm:schedule_lesson_drawer' lesson.id %}" hx-target="#lessonDrawerContent" hx-swap="outerHTML" hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('lessonDrawer').classList.add('is-open')">
+                    <div class="crm-lesson-card__top">
+                        <div>
+                            <h4 class="crm-lesson-card__title">{{ lesson.title }}</h4>
+                            <div class="crm-lesson-card__meta">{{ lesson.course_name|default:'Без курса' }} · {{ lesson.teacher.get_full_name|default:lesson.teacher.username }}</div>
+                        </div>
+                        <span class="crm-status-badge crm-status-badge--{{ lesson.actual_status }}">{{ lesson.actual_status_label }}</span>
+                    </div>
+                    <div class="crm-lesson-card__time">
+                        <span>{{ lesson.classdateStart|date:'d.m.Y H:i' }}</span>
+                        <span>до {{ lesson.classdateEnd|time:'H:i' }}</span>
+                    </div>
+                    {% if lesson.cancel_reason %}<div class="crm-table-meta">Причина отмены: {{ lesson.cancel_reason }}</div>{% endif %}
+                    {% if lesson.reschedule_reason %}<div class="crm-table-meta">Причина переноса: {{ lesson.reschedule_reason }}</div>{% endif %}
+                </article>
+            {% endfor %}
+        {% else %}
+            <div class="crm-table-empty">Занятия не найдены. Сгенерируйте расписание или измените фильтры.</div>
+        {% endif %}
+    </div>
+</div>

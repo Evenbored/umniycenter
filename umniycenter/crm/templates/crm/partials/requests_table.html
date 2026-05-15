@@ -1,0 +1,96 @@
+<div class="crm-data-panel__header">
+    <div>
+        <strong id="requestsCount">{{ requests_count }}</strong>
+        <span>заявок найдено</span>
+    </div>
+    <button class="crm-btn-icon" type="button" @click="toggleView()" title="Переключить вид">
+        <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
+            <rect x="3" y="3" width="7" height="7" rx="1"/>
+            <rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="3" y="14" width="7" height="7" rx="1"/>
+            <rect x="14" y="14" width="7" height="7" rx="1"/>
+        </svg>
+    </button>
+</div>
+
+<div class="crm-table-wrapper" id="requestsTableWrapper" x-show="viewMode === 'table'">
+    <table class="crm-table" id="requestsTable">
+        <thead>
+            <tr>
+                <th>Ребенок</th>
+                <th>Родитель</th>
+                <th>Контакты</th>
+                <th>Возраст</th>
+                <th>Курсы</th>
+                <th>Источник</th>
+                <th>Дата</th>
+                <th>Статус</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody id="requestsTableBody">
+            {% if participant_requests %}
+                {% for participant_request in participant_requests %}
+                    <tr hx-get="{% url 'crm:request_drawer' participant_request.id %}" hx-target="#requestDrawerContent" hx-swap="outerHTML" hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('requestDrawer').classList.add('is-open')">
+                        <td><div class="crm-table-name">{{ participant_request.child_fio }}</div></td>
+                        <td><div class="crm-table-name">{{ participant_request.parent_fio }}</div></td>
+                        <td>
+                            <div>{{ participant_request.phone }}</div>
+                            {% if participant_request.email %}<div class="crm-table-meta">{{ participant_request.email }}</div>{% endif %}
+                        </td>
+                        <td><div>{{ participant_request.age }} лет</div></td>
+                        <td><div class="crm-table-meta">{{ participant_request.get_courses_display }}</div></td>
+                        <td><div>{{ participant_request.get_source_display|default:'-' }}</div></td>
+                        <td><div>{{ participant_request.created|date:'d.m.Y' }}</div></td>
+                        <td>
+                            {% if participant_request.checked %}
+                                <span class="crm-status-badge crm-status-badge--processed">Обработана</span>
+                            {% else %}
+                                <span class="crm-status-badge crm-status-badge--new">Новая</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="crm-table-actions">
+                                <button type="button" hx-get="{% url 'crm:request_drawer' participant_request.id %}" hx-target="#requestDrawerContent" hx-swap="outerHTML" hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('requestDrawer').classList.add('is-open')" title="Открыть">
+                                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                        <circle cx="12" cy="12" r="3"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            {% else %}
+                <tr><td colspan="9" class="crm-table-empty">Заявок не найдено. Попробуйте изменить фильтры.</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<div class="crm-cards-grid" id="requestsCardsGrid" x-show="viewMode === 'cards'" x-cloak>
+    {% if participant_requests %}
+        {% for participant_request in participant_requests %}
+            <article class="crm-request-card" hx-get="{% url 'crm:request_drawer' participant_request.id %}" hx-target="#requestDrawerContent" hx-swap="outerHTML" hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('requestDrawer').classList.add('is-open')">
+                <div class="crm-request-card__header">
+                    <div>
+                        <h4 class="crm-request-card__title">{{ participant_request.child_fio }}</h4>
+                        <div class="crm-request-card__meta">{{ participant_request.created|date:'d.m.Y' }}</div>
+                    </div>
+                    {% if participant_request.checked %}
+                        <span class="crm-status-badge crm-status-badge--processed">Обработана</span>
+                    {% else %}
+                        <span class="crm-status-badge crm-status-badge--new">Новая</span>
+                    {% endif %}
+                </div>
+                <div class="crm-request-card__body">
+                    <div class="crm-request-card__row"><span>{{ participant_request.parent_fio }}</span></div>
+                    <div class="crm-request-card__row"><span>{{ participant_request.phone }}</span></div>
+                    <div class="crm-request-card__row"><span>{{ participant_request.get_courses_display }}</span></div>
+                </div>
+            </article>
+        {% endfor %}
+    {% else %}
+        <div class="crm-empty">Заявок не найдено. Попробуйте изменить фильтры.</div>
+    {% endif %}
+</div>

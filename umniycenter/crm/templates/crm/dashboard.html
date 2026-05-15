@@ -1,0 +1,15 @@
+{% extends 'crm/base.html' %}
+{% load static %}
+
+{% block title %}CRM Dashboard{% endblock title %}
+{% block page_title %}Dashboard{% endblock page_title %}
+
+{% block content %}
+<div id="dashboardContent" hx-get="{% url 'crm:dashboard' %}" hx-trigger="load" hx-swap="innerHTML">
+    <div class="crm-empty">Загрузка dashboard…</div>
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<script src="{% static 'crm/js/dashboard_htmx.js' %}" defer></script>
+{% endblock scripts %}

@@ -1,0 +1,100 @@
+<div class="crm-drawer__panel crm-drawer__panel--wide" id="paymentDrawerContent">
+    <header class="crm-drawer__header">
+        <div>
+            <h3 id="paymentDrawerTitle">{% if selected_payment %}Платеж #{{ selected_payment.id }}{% else %}Платеж{% endif %}</h3>
+            <p id="paymentDrawerSubtitle">{% if selected_payment %}{{ selected_payment.transaction_id|default:selected_payment.yookassa_payment_id|default:'Без ID транзакции' }}{% endif %}</p>
+        </div>
+        <button class="crm-btn-icon" type="button" onclick="closePaymentDetailsDrawer()" aria-label="Закрыть">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M18 6 6 18M6 6l12 12"/>
+            </svg>
+        </button>
+    </header>
+
+    <div class="crm-drawer__content">
+        {% if selected_payment %}
+            <div class="crm-student-profile">
+                <div class="crm-student-profile__avatar" id="paymentDrawerInitials">₽</div>
+                <div>
+                    <h4 id="paymentDrawerAmount">{{ selected_payment.amount|floatformat:0 }} ₽</h4>
+                    <span id="paymentDrawerStatus">
+                        {% if selected_payment.status == 'completed' %}
+                            <span class="crm-status-badge crm-status-badge--active">{{ selected_payment.status_display }}</span>
+                        {% else %}
+                            <span class="crm-status-badge crm-status-badge--archive">{{ selected_payment.status_display }}</span>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+
+            <div class="crm-drawer-section">
+                <h4>Основная информация</h4>
+                <div class="crm-info-grid">
+                    <div class="crm-info-item"><span class="crm-info-label">Способ оплаты</span><strong>{{ selected_payment.payment_method_display|default:selected_payment.payment_method }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Создан</span><strong>{{ selected_payment.created_at|date:'d.m.Y H:i' }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Оплачен</span><strong>{{ selected_payment.paid_at|date:'d.m.Y H:i'|default:'-' }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Транзакция</span><strong>{{ selected_payment.transaction_id|default:'-' }}</strong></div>
+                </div>
+            </div>
+
+            <div class="crm-drawer-section">
+                <h4>Плательщик и ученик</h4>
+                <div class="crm-info-grid">
+                    <div class="crm-info-item"><span class="crm-info-label">Плательщик</span><strong>{{ selected_payment.parent_name|default:'-' }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Контакты</span><strong>{{ selected_payment.parent_phone|default:selected_payment.parent_email|default:'-' }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Ученик</span><strong>{{ selected_payment.subscription_info.student_name|default:'-' }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Курс</span><strong>{{ selected_payment.subscription_info.course_name|default:'-' }}</strong></div>
+                </div>
+            </div>
+
+            <div class="crm-drawer-section">
+                <h4>Подписка</h4>
+                <div class="crm-info-grid">
+                    <div class="crm-info-item"><span class="crm-info-label">Тариф</span><strong>{{ selected_payment.subscription_info.tariff_name|default:'-' }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Статус подписки</span><strong>{{ selected_payment.subscription_info.subscription_status|default:'-' }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Занятия</span><strong>{{ selected_payment.subscription_info.lessons_used|default:'-' }} / {{ selected_payment.subscription_info.lessons_total|default:'-' }} (осталось {{ selected_payment.subscription_info.lessons_remaining|default:'-' }})</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Срок</span><strong>{{ selected_payment.subscription_info.start_date|default:'-' }} - {{ selected_payment.subscription_info.end_date|default:'-' }}</strong></div>
+                </div>
+            </div>
+
+            {% if selected_payment.yookassa_payment_id or selected_payment.yookassa_payment_url %}
+                <div class="crm-drawer-section" id="paymentDrawerOnlineSection">
+                    <h4>Онлайн-оплата</h4>
+                    <div class="crm-info-grid">
+                        <div class="crm-info-item"><span class="crm-info-label">ID ЮKassa</span><strong>{{ selected_payment.yookassa_payment_id|default:'-' }}</strong></div>
+                        <div class="crm-info-item"><span class="crm-info-label">Ссылка</span><strong>{% if selected_payment.yookassa_payment_url %}<a href="{{ selected_payment.yookassa_payment_url }}" target="_blank" rel="noopener">Открыть ссылку оплаты</a>{% else %}-{% endif %}</strong></div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <div class="crm-drawer-section">
+                <h4>Примечания и ошибки</h4>
+                <div id="paymentDrawerNotes" class="crm-request-preview">
+                    <strong>Примечания:</strong> {{ selected_payment.notes|default:'-' }}<br>
+                    <strong>Ошибка:</strong> {{ selected_payment.error_message|default:'-' }}
+                </div>
+            </div>
+        {% endif %}
+        <div class="crm-form-alert" {% if not form_error %}hidden{% endif %} hidden>{{ form_error|default:'' }}</div>
+    </div>
+
+    <footer class="crm-drawer__footer">
+        <button class="crm-btn crm-btn--secondary" type="button" onclick="closePaymentDetailsDrawer()">Закрыть</button>
+        {% if selected_payment %}
+            {% if selected_payment.status == 'pending' and selected_payment.payment_method != 'online' %}
+                <form hx-post="{% url 'crm:payment_cancel' selected_payment.id %}" hx-target="#paymentDrawerContent" hx-swap="outerHTML" style="display:inline-flex; gap: 8px; align-items:center;">
+                    {% csrf_token %}
+                    <input type="hidden" name="reason" value="Оплата не поступила">
+                    <button class="crm-btn crm-btn--secondary" type="submit" hx-confirm="Отменить платеж?">Отменить платеж</button>
+                </form>
+                <button class="crm-btn crm-btn--primary" type="button" hx-post="{% url 'crm:payment_confirm' selected_payment.id %}" hx-target="#paymentDrawerContent" hx-swap="outerHTML" hx-confirm="Подтвердить получение оплаты и активировать подписку?">Подтвердить оплату</button>
+            {% elif selected_payment.status == 'failed' %}
+                <form hx-post="{% url 'crm:payment_cancel' selected_payment.id %}" hx-target="#paymentDrawerContent" hx-swap="outerHTML" style="display:inline-flex; gap: 8px; align-items:center;">
+                    {% csrf_token %}
+                    <input type="hidden" name="reason" value="Оплата не поступила">
+                    <button class="crm-btn crm-btn--secondary" type="submit" hx-confirm="Отменить платеж?">Отменить платеж</button>
+                </form>
+            {% endif %}
+        {% endif %}
+    </footer>
+</div>

@@ -1,0 +1,72 @@
+<div class="crm-drawer__panel" id="courseDrawerContent">
+    <header class="crm-drawer__header">
+        <div>
+            <h3 id="courseDrawerTitle">{{ drawer_title }}</h3>
+            <p id="courseDrawerSubtitle">{{ drawer_subtitle }}</p>
+        </div>
+        <button class="crm-btn-icon" type="button" onclick="closeCourseDetailsDrawer()" aria-label="Закрыть">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M18 6 6 18M6 6l12 12"/>
+            </svg>
+        </button>
+    </header>
+
+    <div class="crm-drawer__content">
+        {% if selected_course %}
+            <div class="crm-student-profile">
+                <div class="crm-student-profile__avatar" id="courseDrawerInitials">{{ selected_course.name|first|upper }}</div>
+                <div>
+                    <h4 id="courseDrawerName">{{ selected_course.name }}</h4>
+                </div>
+            </div>
+
+            <div class="crm-drawer-section">
+                <h4>Информация о курсе</h4>
+                <div class="crm-info-grid">
+                    <div class="crm-info-item">
+                        <span class="crm-info-label">ID курса</span>
+                        <strong id="courseDrawerId">{{ selected_course.id }}</strong>
+                    </div>
+                    <div class="crm-info-item">
+                        <span class="crm-info-label">Название</span>
+                        <strong id="courseDrawerNameInfo">{{ selected_course.name }}</strong>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        <form
+            class="crm-drawer-section crm-student-edit-form"
+            id="courseEditForm"
+            hx-post="{{ form_action }}"
+            hx-target="#courseDrawerContent"
+            hx-swap="outerHTML"
+        >
+            {% csrf_token %}
+            <h4>{% if selected_course %}Редактирование курса{% else %}Данные курса{% endif %}</h4>
+            <div class="crm-form-grid">
+                <label class="crm-form-field">
+                    <span>Название курса *</span>
+                    <input id="courseEditName" name="name" type="text" required value="{{ course_form.name }}">
+                </label>
+            </div>
+            <div class="crm-form-alert" id="courseEditAlert" {% if not form_error %}hidden{% endif %} hidden>{{ form_error|default:'' }}</div>
+        </form>
+    </div>
+
+    <footer class="crm-drawer__footer">
+        <button class="crm-btn crm-btn--secondary" type="button" onclick="closeCourseDetailsDrawer()">{% if selected_course %}Закрыть{% else %}Отмена{% endif %}</button>
+        {% if selected_course %}
+            <button
+                class="crm-btn crm-btn--danger"
+                type="button"
+                hx-post="{% url 'crm:course_delete' selected_course.id %}"
+                hx-target="#courseDrawerContent"
+                hx-swap="outerHTML"
+                hx-confirm="Вы уверены, что хотите удалить этот курс? Это действие нельзя отменить."
+                hx-on::after-request="if (event.detail.xhr.status < 400) document.body.dispatchEvent(new CustomEvent('crm:toast', { detail: { type: 'success', title: 'Готово', message: 'Курс удалён' } }))"
+            >Удалить</button>
+        {% endif %}
+        <button class="crm-btn crm-btn--primary" type="submit" form="courseEditForm" id="courseEditSaveBtn">{{ submit_label }}</button>
+    </footer>
+</div>

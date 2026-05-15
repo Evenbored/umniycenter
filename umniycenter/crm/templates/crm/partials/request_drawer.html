@@ -1,0 +1,70 @@
+<div class="crm-drawer__panel" id="requestDrawerContent">
+    <header class="crm-drawer__header">
+        <div>
+            <h3 id="drawerRequestTitle">{% if selected_request %}Заявка #{{ selected_request.id }}{% else %}Заявка{% endif %}</h3>
+            <p id="drawerRequestDate">{% if selected_request %}{{ selected_request.created|date:'d.m.Y в H:i' }}{% endif %}</p>
+        </div>
+        <button class="crm-btn-icon" type="button" onclick="closeRequestDrawer()" aria-label="Закрыть">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M18 6 6 18M6 6l12 12"/>
+            </svg>
+        </button>
+    </header>
+
+    <div class="crm-drawer__content" id="drawerRequestContent">
+        {% if selected_request %}
+            <div class="crm-drawer-section">
+                <h4>Информация о ребенке</h4>
+                <div class="crm-info-grid">
+                    <div class="crm-info-item"><span class="crm-info-label">ФИО ребенка</span><strong id="drawerChildFio">{{ selected_request.child_fio }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Возраст</span><strong id="drawerChildAge">{{ selected_request.age }} лет</strong></div>
+                </div>
+            </div>
+
+            <div class="crm-drawer-section">
+                <h4>Контакты родителя</h4>
+                <div class="crm-info-grid">
+                    <div class="crm-info-item"><span class="crm-info-label">ФИО родителя</span><strong id="drawerParentFio">{{ selected_request.parent_fio }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Телефон</span><strong id="drawerEmail">{{ selected_request.phone }}{% if selected_request.email %} · {{ selected_request.email }}{% endif %}</strong></div>
+                </div>
+            </div>
+
+            <div class="crm-drawer-section">
+                <h4>Интересующие курсы</h4>
+                <div id="drawerCourses" class="crm-tags">
+                    {% for course in selected_request.courses.all %}
+                        <span class="crm-tag">{{ course.name }}</span>
+                    {% empty %}
+                        <span class="crm-tag">Не указаны</span>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="crm-drawer-section">
+                <h4>Дополнительно</h4>
+                <div class="crm-info-grid">
+                    <div class="crm-info-item"><span class="crm-info-label">Источник</span><strong id="drawerSource">{{ selected_request.get_source_display|default:'-' }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Дата обращения</span><strong id="drawerCreatedFull">{{ selected_request.created|date:'d.m.Y в H:i' }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Статус</span><span id="drawerStatus">{% if selected_request.checked %}<span class="crm-status-badge crm-status-badge--processed">Обработана</span>{% else %}<span class="crm-status-badge crm-status-badge--new">Новая</span>{% endif %}</span></div>
+                </div>
+            </div>
+        {% endif %}
+        <div class="crm-form-alert" {% if not form_error %}hidden{% endif %}>{{ form_error|default:'' }}</div>
+    </div>
+
+    <footer class="crm-drawer__footer">
+        <button class="crm-btn crm-btn--secondary" type="button" onclick="closeRequestDrawer()">Закрыть</button>
+        {% if selected_request and not selected_request.checked %}
+            <button class="crm-btn crm-btn--success" type="button" id="drawerMarkProcessedBtn" hx-post="{% url 'crm:request_mark_processed' selected_request.id %}" hx-target="#requestDrawerContent" hx-swap="outerHTML">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>
+                Отметить обработанной
+            </button>
+        {% endif %}
+        {% if selected_request %}
+            <button class="crm-btn crm-btn--primary" type="button" hx-get="{% url 'crm:request_create_student' selected_request.id %}" hx-target="#studentDrawerContent" hx-swap="outerHTML" hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('studentDrawer').classList.add('is-open')">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                Заполнить ученика
+            </button>
+        {% endif %}
+    </footer>
+</div>

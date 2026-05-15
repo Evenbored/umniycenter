@@ -1,0 +1,89 @@
+{% extends 'crm/base.html' %}
+{% load static %}
+
+{% block title %}Родители - CRM{% endblock title %}
+{% block page_title %}Родители{% endblock page_title %}
+
+{% block links %}
+<link rel="stylesheet" href="{% static 'crm/css/students.css' %}">
+{% endblock links %}
+
+{% block content %}
+<section class="crm-section-header">
+    <div>
+        <p class="crm-section-desc">Контакты родителей, дети и доступ к личному кабинету</p>
+    </div>
+    <div class="crm-section-actions">
+        <button
+            class="crm-btn crm-btn--primary"
+            type="button"
+            hx-get="{% url 'crm:parents_table' %}"
+            hx-target="#parentsTableHost"
+            hx-swap="innerHTML"
+        >
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+            </svg>
+            Обновить
+        </button>
+    </div>
+</section>
+
+<section class="crm-toolbar">
+    <div class="crm-toolbar__search">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input
+            type="search"
+            id="parentsSearch"
+            name="search"
+            placeholder="Поиск по ФИО, телефону, email, логину или ребенку..."
+            value="{{ request.GET.search|default:'' }}"
+            hx-get="{% url 'crm:parents_table' %}"
+            hx-trigger="keyup changed delay:300ms, search"
+            hx-target="#parentsTableHost"
+            hx-swap="innerHTML"
+            hx-include="#parentsSortFilter"
+        >
+    </div>
+    <div class="crm-toolbar__filters">
+        <select
+            id="parentsSortFilter"
+            name="sort"
+            class="crm-select"
+            hx-get="{% url 'crm:parents_table' %}"
+            hx-trigger="change"
+            hx-target="#parentsTableHost"
+            hx-swap="innerHTML"
+            hx-include="#parentsSearch"
+        >
+            <option value="name_az" {% if request.GET.sort|default:'name_az' == 'name_az' %}selected{% endif %}>По имени А-Я</option>
+            <option value="name_za" {% if request.GET.sort == 'name_za' %}selected{% endif %}>По имени Я-А</option>
+            <option value="children_many" {% if request.GET.sort == 'children_many' %}selected{% endif %}>Больше детей</option>
+        </select>
+    </div>
+</section>
+
+<section class="crm-data-panel">
+    <div id="parentsTableHost">
+        {% include 'crm/partials/parents_table.html' %}
+    </div>
+</section>
+
+<aside class="crm-drawer" id="parentDetailsDrawer">
+    <div class="crm-drawer__overlay" onclick="closeParentDetailsDrawer()"></div>
+    {% include 'crm/partials/parent_drawer.html' %}
+</aside>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+    function closeParentDetailsDrawer() {
+        document.getElementById('parentDetailsDrawer')?.classList.remove('is-open');
+    }
+
+    document.body.addEventListener('crm:close-parent-drawer', closeParentDetailsDrawer);
+</script>
+{% endblock scripts %}

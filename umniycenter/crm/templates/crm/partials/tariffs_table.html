@@ -1,0 +1,76 @@
+<div class="crm-data-panel__header">
+    <div>
+        <strong id="tariffsCount">{{ tariffs_count }}</strong>
+        <span>тарифов найдено</span>
+    </div>
+    <span class="crm-data-panel__hint">Клик по строке открывает редактирование</span>
+</div>
+<div class="crm-table-wrapper">
+    <table class="crm-table">
+        <thead>
+            <tr>
+                <th>Тариф</th>
+                <th>Курс</th>
+                <th>Занятий</th>
+                <th>Срок</th>
+                <th>Цена</th>
+                <th>Абонемент</th>
+                <th>Предложение</th>
+                <th>Статус</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if tariffs %}
+                {% for tariff in tariffs %}
+                    <tr
+                        hx-get="{% url 'crm:tariff_drawer_edit' tariff.id %}"
+                        hx-target="#tariffDrawerContent"
+                        hx-swap="outerHTML"
+                        hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('tariffDrawer').classList.add('is-open')"
+                    >
+                        <td>
+                            <div class="crm-table-name">{{ tariff.name }}</div>
+                            {% if tariff.description %}
+                                <span class="crm-table-meta">{{ tariff.description }}</span>
+                            {% endif %}
+                        </td>
+                        <td><span class="crm-group-chip">{{ tariff.course.name }}</span></td>
+                        <td><strong>{{ tariff.lessons_count }}</strong></td>
+                        <td>{{ tariff.validity_days }} дней</td>
+                        <td><span class="crm-tariff-price">{{ tariff.price|floatformat:2 }} ₽</span></td>
+                        <td><span class="crm-tariff-chip">{{ tariff.get_subscription_type_display }}</span></td>
+                        <td><span class="crm-tariff-chip">{% if tariff.is_trial %}Пробный{% else %}Платный{% endif %}</span></td>
+                        <td>
+                            {% if tariff.is_active %}
+                                <span class="crm-status-badge crm-status-badge--active">Активен</span>
+                            {% else %}
+                                <span class="crm-status-badge crm-status-badge--archive">Архив</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button
+                                class="crm-table-action-btn"
+                                type="button"
+                                hx-get="{% url 'crm:tariff_drawer_edit' tariff.id %}"
+                                hx-target="#tariffDrawerContent"
+                                hx-swap="outerHTML"
+                                hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('tariffDrawer').classList.add('is-open')"
+                                title="Редактировать"
+                            >
+                                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path d="M12 20h9"/>
+                                    <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="9" class="crm-table-empty">Тарифы не найдены. Измените фильтры или создайте новый тариф.</td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>

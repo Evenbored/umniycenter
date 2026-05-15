@@ -1,0 +1,16 @@
+<div class="crm-drawer__panel" id="generateDrawerContent">
+    <header class="crm-drawer__header">
+        <div><h3>Сгенерировать расписание</h3><p>Занятия создаются по активным стандартным временам</p></div>
+        <button class="crm-btn-icon" type="button" onclick="closeGenerateDrawer()" aria-label="Закрыть">×</button>
+    </header>
+    <form class="crm-drawer__content crm-form" id="generateForm" hx-post="{% url 'crm:schedule_generate' %}" hx-target="#generateDrawerContent" hx-swap="outerHTML" hx-include="#scheduleFiltersForm">
+        <div class="crm-form-alert {% if generate_success %}is-success{% endif %}" id="generateAlert" {% if not form_error and not generate_success %}hidden{% endif %}>{{ form_error|default:generate_success }}</div>
+        <label class="crm-form-field"><span>Дата начала *</span><input id="generateDateFrom" name="date_from" type="date" value="{{ request.POST.date_from|default:request.GET.date_from }}" required></label>
+        <label class="crm-form-field"><span>Дата окончания *</span><input id="generateDateTo" name="date_to" type="date" value="{{ request.POST.date_to|default:request.GET.date_to }}" required></label>
+        <label class="crm-form-field"><span>Группа</span><select id="generateGroup" name="group_id"><option value="">Все группы</option>{% for group in groups %}<option value="{{ group.id }}" {% if request.POST.group_id == group.id|stringformat:'s' %}selected{% endif %}>{{ group.course.name }} · {{ group.number }}</option>{% endfor %}</select></label>
+    </form>
+    <footer class="crm-drawer__footer">
+        <button class="crm-btn crm-btn--secondary" type="button" onclick="closeGenerateDrawer()">Отмена</button>
+        <button class="crm-btn crm-btn--primary" type="submit" form="generateForm" id="generateSubmitBtn">Сгенерировать</button>
+    </footer>
+</div>

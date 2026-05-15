@@ -1,0 +1,66 @@
+<div class="crm-drawer__panel crm-drawer__panel--wide" id="studentDrawerContent">
+    <header class="crm-drawer__header">
+        <div>
+            <h3>Создать ученика из заявки</h3>
+            <p>Проверьте данные, заполните недостающее и сохраните ученика.</p>
+        </div>
+        <button class="crm-btn-icon" type="button" onclick="closeStudentDrawer()" aria-label="Закрыть">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+    </header>
+
+    <form class="crm-drawer__content crm-form" id="studentFromRequestForm" hx-post="{% if participant_request %}{% url 'crm:request_create_student' participant_request.id %}{% endif %}" hx-target="#studentDrawerContent" hx-swap="outerHTML">
+        {% csrf_token %}
+        <div class="crm-form-alert" id="studentFormAlert" {% if not form_error %}hidden{% endif %}>{{ form_error|default:'' }}</div>
+
+        <div class="crm-drawer-section">
+            <h4>Данные ученика</h4>
+            <div class="crm-form-grid">
+                <label class="crm-form-field"><span>Фамилия <span style="color: #ef4444;">*</span></span><input id="studentLastName" name="last_name" type="text" required value="{{ student_form.last_name }}"></label>
+                <label class="crm-form-field"><span>Имя <span style="color: #ef4444;">*</span></span><input id="studentFirstName" name="first_name" type="text" required value="{{ student_form.first_name }}"></label>
+                <label class="crm-form-field"><span>Дата рождения</span><input id="studentBirthDate" name="birth_date" type="date" value="{{ student_form.birth_date }}"></label>
+                <label class="crm-form-field"><span>Пол <span style="color: #ef4444;">*</span></span><select id="studentSex" name="sex" required><option value="">Выберите пол</option><option value="0" {% if student_form.sex == '0' %}selected{% endif %}>Мужской</option><option value="1" {% if student_form.sex == '1' %}selected{% endif %}>Женский</option></select></label>
+                <label class="crm-form-field"><span>Телефон ученика</span><input id="studentPhone" name="phone" type="tel" pattern="\+7\d{10}" placeholder="+79001234567" value="{{ student_form.phone }}"></label>
+                <label class="crm-form-field"><span>Email</span><input id="studentEmail" name="email" type="email" value="{{ student_form.email }}"></label>
+                <label class="crm-form-field"><span>Город</span><input id="studentCity" name="city" type="text" value="{{ student_form.city }}"></label>
+                <label class="crm-form-field"><span>Страна</span><input id="studentCountry" name="country" type="text" value="{{ student_form.country }}"></label>
+                <label class="crm-form-field"><span>Источник</span><select id="studentSource" name="source"><option value="">Не указан</option>{% for value, label in source_choices %}<option value="{{ value }}" {% if student_form.source == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+            </div>
+        </div>
+
+        <div class="crm-drawer-section">
+            <h4>Контакты родителя</h4>
+            <div class="crm-form-grid">
+                <label class="crm-form-field"><span>Фамилия родителя <span style="color: #ef4444;">*</span></span><input id="parentLastName" name="parent_last_name" type="text" required value="{{ student_form.parent_last_name }}"></label>
+                <label class="crm-form-field"><span>Имя родителя <span style="color: #ef4444;">*</span></span><input id="parentFirstName" name="parent_first_name" type="text" required value="{{ student_form.parent_first_name }}"></label>
+                <label class="crm-form-field"><span>Телефон родителя</span><input id="parentPhone" name="parent_phone" type="tel" pattern="\+7\d{10}" placeholder="+79001234567" value="{{ student_form.parent_phone }}"></label>
+                <label class="crm-form-field"><span>Email родителя</span><input id="parentEmail" name="parent_email" type="email" value="{{ student_form.parent_email }}"></label>
+            </div>
+        </div>
+
+        <div class="crm-drawer-section">
+            <h4>Доступ</h4>
+            <div class="crm-form-grid">
+                <label class="crm-form-field"><span>Логин</span><input id="studentUsername" name="username" type="text" required value="{{ student_form.username }}"></label>
+                <label class="crm-form-field"><span>Временный пароль</span><input id="studentPassword" name="password" type="text" required value="{{ student_form.password }}"></label>
+            </div>
+        </div>
+
+        <div class="crm-drawer-section">
+            <h4>Источник</h4>
+            <div class="crm-request-preview" id="studentRequestPreview">
+                {% if participant_request %}
+                    <strong>{{ participant_request.child_fio }}</strong>
+                    Родитель: {{ participant_request.parent_fio }}<br>
+                    Телефон родителя: {{ participant_request.phone }}<br>
+                    Курсы: {{ participant_request.get_courses_display|default:'Не указаны' }}
+                {% endif %}
+            </div>
+        </div>
+    </form>
+
+    <footer class="crm-drawer__footer">
+        <button class="crm-btn crm-btn--secondary" type="button" onclick="closeStudentDrawer()">Отмена</button>
+        <button class="crm-btn crm-btn--primary" type="submit" form="studentFromRequestForm" id="studentSubmitBtn"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Сохранить ученика</button>
+    </footer>
+</div>

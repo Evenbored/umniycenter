@@ -1,0 +1,101 @@
+{% extends 'crm/base.html' %}
+{% load static %}
+
+{% block title %}Курсы - CRM{% endblock title %}
+{% block page_title %}Курсы{% endblock page_title %}
+
+{% block links %}
+<link rel="stylesheet" href="{% static 'crm/css/students.css' %}">
+{% endblock links %}
+
+{% block content %}
+<section class="crm-section-header">
+    <div>
+        <p class="crm-section-desc">Список курсов центра и управление программами обучения</p>
+    </div>
+    <div class="crm-section-actions">
+        <button
+            class="crm-btn crm-btn--primary"
+            type="button"
+            hx-get="{% url 'crm:course_drawer_create' %}"
+            hx-target="#courseDrawerContent"
+            hx-swap="outerHTML"
+            hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('courseDetailsDrawer').classList.add('is-open')"
+        >
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M12 5v14M5 12h14"/>
+            </svg>
+            Добавить курс
+        </button>
+        <button
+            class="crm-btn crm-btn--primary"
+            type="button"
+            hx-get="{% url 'crm:courses_table' %}"
+            hx-target="#coursesTableHost"
+            hx-swap="innerHTML"
+        >
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+            </svg>
+            Обновить
+        </button>
+    </div>
+</section>
+
+<section class="crm-toolbar">
+    <div class="crm-toolbar__search">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input
+            type="search"
+            id="coursesSearch"
+            name="search"
+            placeholder="Поиск по названию курса..."
+            value="{{ request.GET.search|default:'' }}"
+            hx-get="{% url 'crm:courses_table' %}"
+            hx-trigger="keyup changed delay:300ms, search"
+            hx-target="#coursesTableHost"
+            hx-swap="innerHTML"
+            hx-include="#coursesSortFilter"
+        >
+    </div>
+    <div class="crm-toolbar__filters">
+        <select
+            id="coursesSortFilter"
+            name="sort"
+            class="crm-select"
+            hx-get="{% url 'crm:courses_table' %}"
+            hx-trigger="change"
+            hx-target="#coursesTableHost"
+            hx-swap="innerHTML"
+            hx-include="#coursesSearch"
+        >
+            <option value="name_az" {% if request.GET.sort|default:'name_az' == 'name_az' %}selected{% endif %}>По названию А-Я</option>
+            <option value="name_za" {% if request.GET.sort == 'name_za' %}selected{% endif %}>По названию Я-А</option>
+        </select>
+    </div>
+</section>
+
+<section class="crm-data-panel">
+    <div id="coursesTableHost">
+        {% include 'crm/partials/courses_table.html' %}
+    </div>
+</section>
+
+<aside class="crm-drawer" id="courseDetailsDrawer">
+    <div class="crm-drawer__overlay" onclick="closeCourseDetailsDrawer()"></div>
+    {% include 'crm/partials/course_drawer.html' %}
+</aside>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+    function closeCourseDetailsDrawer() {
+        document.getElementById('courseDetailsDrawer')?.classList.remove('is-open');
+    }
+
+    document.body.addEventListener('crm:close-course-drawer', closeCourseDetailsDrawer);
+</script>
+{% endblock scripts %}

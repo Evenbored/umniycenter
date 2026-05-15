@@ -1,0 +1,25 @@
+<div id="chatHost" {% if selected_ticket %}data-ticket-id="{{ selected_ticket.id }}"{% endif %}>
+    {% if selected_ticket %}
+        <script>
+            document.body.dispatchEvent(new CustomEvent('crm:mark-chat-read', { detail: { ticketId: {{ selected_ticket.id }} } }));
+        </script>
+        <div class="crm-messages-chat__content" id="chatContent">
+            <header class="crm-messages-chat__header">
+                <div class="crm-messages-chat__user"><div class="crm-messages-chat__avatar">{{ selected_ticket.parent.first_name|first|default:'Р' }}{{ selected_ticket.parent.last_name|first }}</div><div><div class="crm-messages-chat__name">{{ selected_ticket.parent.get_full_name|default:selected_ticket.parent.username }}</div><div class="crm-messages-chat__meta"><span>{{ selected_ticket.get_category_display }}</span><span class="crm-messages-chat__separator">•</span><span>{{ selected_ticket.created_at|date:'d.m.Y H:i' }}</span></div></div></div>
+                <div class="crm-messages-chat__actions">{% if selected_ticket.status != 'closed' %}<button class="crm-btn crm-btn--secondary crm-btn--sm" type="button" hx-post="{% url 'crm:messages_close' selected_ticket.id %}" hx-target="#chatHost" hx-swap="outerHTML" hx-confirm="Закрыть обращение?"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Закрыть обращение</button>{% endif %}</div>
+            </header>
+            <div class="crm-messages-chat__body" id="chatBody">
+                {% for message in selected_ticket.messages.all %}
+                    <div class="crm-message {% if message.sender_id == request.user.id %}crm-message--sent{% endif %}" data-message-id="{{ message.id }}"><div class="crm-message__avatar">{{ message.sender.first_name|first|default:'У' }}{{ message.sender.last_name|first }}</div><div class="crm-message__content"><div class="crm-message__header"><span class="crm-message__sender">{{ message.sender.get_full_name|default:message.sender.username }}</span><span class="crm-message__time">{{ message.created_at|date:'d.m H:i' }}</span></div><div class="crm-message__text">{{ message.content|linebreaksbr }}</div></div></div>
+                {% empty %}<p style="color: var(--crm-muted); font-size: 13px;">Сообщений пока нет</p>{% endfor %}
+            </div>
+            <div class="crm-messages-chat__typing" id="typingIndicator" style="display: none;"><span>Собеседник печатает</span><span class="crm-typing-dots"><span>.</span><span>.</span><span>.</span></span></div>
+            <footer class="crm-messages-chat__footer">
+                {% if form_error %}<div class="crm-form-alert">{{ form_error }}</div>{% endif %}
+                {% if selected_ticket.status != 'closed' %}<form class="crm-messages-input-form" hx-post="{% url 'crm:messages_send' selected_ticket.id %}" hx-target="#chatHost" hx-swap="outerHTML"><textarea name="content" class="crm-messages-input" placeholder="Введите сообщение..." rows="1" maxlength="2000"></textarea><button type="submit" class="crm-btn crm-btn--primary"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>Отправить</button></form>{% else %}<p style="color: var(--crm-muted); font-size: 13px;">Обращение закрыто</p>{% endif %}
+            </footer>
+        </div>
+    {% else %}
+        <div class="crm-messages-chat__empty" id="chatEmpty"><svg width="64" height="64" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><h3>Выберите обращение</h3><p>Выберите обращение из списка слева, чтобы начать общение</p></div>
+    {% endif %}
+</div>

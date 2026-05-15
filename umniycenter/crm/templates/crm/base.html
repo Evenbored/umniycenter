@@ -1,0 +1,226 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CRM{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'crm/css/crm.css' %}">
+    <script src="{% static 'vendor/htmx/htmx.min.js' %}" defer></script>
+    <script src="{% static 'vendor/alpine/alpine.min.js' %}" defer></script>
+    {% block links %}{% endblock links %}
+    <script>
+        document.addEventListener('htmx:responseError', (event) => {
+            const detail = event.detail || {};
+            let message = 'Не удалось выполнить действие';
+            const alert = detail.target?.querySelector?.('.crm-form-alert');
+            if (alert?.textContent?.trim()) {
+                message = alert.textContent.trim();
+            }
+
+            try {
+                const payload = detail.xhr?.responseText ? JSON.parse(detail.xhr.responseText) : null;
+                if (payload) {
+                    if (payload.error) {
+                        message = payload.error;
+                    } else {
+                        const errors = Object.values(payload).flat().filter(Boolean);
+                        if (errors.length) {
+                            message = errors.join(' ');
+                        }
+                    }
+                }
+            } catch (error) {
+                message = detail.xhr?.responseText || message;
+            }
+
+            document.body.dispatchEvent(new CustomEvent('crm:toast', {
+                detail: {
+                    type: 'error',
+                    title: 'Ошибка',
+                    message,
+                },
+            }));
+        });
+
+    </script>
+</head>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+    {% with request.resolver_match.url_name as url_name %}
+    <div class="crm-shell">
+        <aside class="crm-sidebar" id="crmSidebar">
+            <a class="crm-brand" href="{% url 'crm:dashboard' %}">
+                <span class="crm-brand__mark">У</span>
+                <span>
+                    <span class="crm-brand__name">Умный CRM</span>
+                    <span class="crm-brand__caption">Панель администратора</span>
+                </span>
+            </a>
+
+            <nav class="crm-nav" aria-label="CRM навигация">
+                <a class="crm-nav__item {% if url_name == 'dashboard' %}is-active{% endif %}" href="{% url 'crm:dashboard' %}">
+                    <span class="crm-nav__icon">D</span>
+                    <span>Главная</span>
+                </a>
+                <a class="crm-nav__item {% if url_name == 'requests' %}is-active{% endif %}" href="{% url 'crm:requests' %}">
+                    <span class="crm-nav__icon">R</span>
+                    <span>Заявки</span>
+                    <span class="crm-nav__badge" data-nav-count="requests">0</span>
+                </a>
+                
+                <!-- Выпадающий список Пользователи -->
+<div class="crm-nav__dropdown">
+                    <div class="crm-nav__item crm-nav__item--dropdown {% if url_name == 'students' or url_name == 'parents' or url_name == 'teachers' %}is-active{% endif %}">
+                        <span class="crm-nav__icon">U</span>
+                        <span>Пользователи</span>
+                        <svg class="crm-nav__arrow" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M6 9l6 6 6-6"/>
+                        </svg>
+                    </div>
+                    <div class="crm-nav__submenu">
+                        <a class="crm-nav__subitem {% if url_name == 'students' %}is-active{% endif %}" href="{% url 'crm:students' %}">
+                            <span>Ученики</span>
+                            <span class="crm-nav__badge" data-nav-count="students">0</span>
+                        </a>
+                        <a class="crm-nav__subitem {% if url_name == 'parents' %}is-active{% endif %}" href="{% url 'crm:parents' %}">
+                            <span>Родители</span>
+                            <span class="crm-nav__badge" data-nav-count="parents">0</span>
+                        </a>
+                        <a class="crm-nav__subitem {% if url_name == 'teachers' %}is-active{% endif %}" href="{% url 'crm:teachers' %}">
+                            <span>Учителя</span>
+                            <span class="crm-nav__badge" data-nav-count="teachers">0</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <a class="crm-nav__item {% if url_name == 'groups' %}is-active{% endif %}" href="{% url 'crm:groups' %}">
+                    <span class="crm-nav__icon">G</span>
+                    <span>Группы</span>
+                    <span class="crm-nav__badge" data-nav-count="groups">0</span>
+                </a>
+                <a class="crm-nav__item {% if url_name == 'tariffs' %}is-active{% endif %}" href="{% url 'crm:tariffs' %}">
+                    <span class="crm-nav__icon">T</span>
+                    <span>Тарифы</span>
+                </a>
+                <a class="crm-nav__item  {% if url_name == 'courses' %}is-active{% endif %}" href="{% url "crm:courses" %}">
+                    <span class="crm-nav__icon">C</span>
+                    <span>Курсы</span>
+                </a>
+                <div class="crm-nav__dropdown">
+                    <div class="crm-nav__item crm-nav__item--dropdown {% if url_name == 'schedule' or url_name == 'schedule_today' %}is-active{% endif %}">
+                        <span class="crm-nav__icon">L</span>
+                        <span>Расписание</span>
+                        <svg class="crm-nav__arrow" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M6 9l6 6 6-6"/>
+                        </svg>
+                    </div>
+                    <div class="crm-nav__submenu">
+                        <a class="crm-nav__subitem {% if url_name == 'schedule_today' %}is-active{% endif %}" href="{% url 'crm:schedule_today' %}">
+                            <span>Сегодня</span>
+                        </a>
+                        <a class="crm-nav__subitem {% if url_name == 'schedule' %}is-active{% endif %}" href="{% url 'crm:schedule' %}">
+                            <span>Управление расписанием</span>
+                        </a>
+                    </div>
+                </div>
+                <a class="crm-nav__item {% if url_name == 'messages' %}is-active{% endif %}" href="{% url 'crm:messages' %}">
+                    <span class="crm-nav__icon">M</span>
+                    <span>Сообщения</span>
+                    <span class="crm-nav__badge" data-nav-count="messages">0</span>
+                </a>
+                <a class="crm-nav__item is-muted" href="#">
+                    <span class="crm-nav__icon">H</span>
+                    <span>Домашние задания</span>
+                </a>
+                <a class="crm-nav__item {% if url_name == 'payments' %}is-active{% endif %}" href="{% url 'crm:payments' %}">
+                    <span class="crm-nav__icon">P</span>
+                    <span>Платежи</span>
+                    <span class="crm-nav__badge" data-nav-count="payments">0</span>
+                </a>
+                <a class="crm-nav__item is-muted" href="#">
+                    <span class="crm-nav__icon">N</span>
+                    <span>Уведомления</span>
+                    <span class="crm-nav__soon">скоро</span>
+                </a>
+            </nav>
+
+            <div class="crm-sidebar__footer">
+                <div class="crm-sidebar-card crm-notes-card">
+                    <div class="crm-notes-header">
+                        <span class="crm-sidebar-card__label">Заметки</span>
+                        <button class="crm-notes-add-btn" type="button" aria-label="Добавить заметку">
+                            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path d="M12 5v14M5 12h14"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="crm-notes-list">
+                        <div class="crm-note-item">
+                            <div class="crm-note-text">Связаться с родителями группы A1 по поводу оплаты</div>
+                            <div class="crm-note-date">Сегодня, 15:30</div>
+                        </div>
+                        <div class="crm-note-item">
+                            <div class="crm-note-text">Подготовить материалы для нового курса</div>
+                            <div class="crm-note-date">Вчера, 18:00</div>
+                        </div>
+                        <div class="crm-note-item">
+                            <div class="crm-note-text">Проверить посещаемость за неделю</div>
+                            <div class="crm-note-date">5 мая, 12:00</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <div class="crm-main">
+            <header class="crm-topbar">
+                <button class="crm-topbar__menu" type="button" id="sidebarToggle" aria-label="Открыть меню">Меню</button>
+                <div>
+                    <div class="crm-topbar__eyebrow">CRM</div>
+                    <h1 class="crm-topbar__title">{% block page_title %}Dashboard{% endblock page_title %}</h1>
+                </div>
+                <div class="crm-topbar__spacer"></div>
+                <form class="crm-search" role="search">
+                    <input type="search" placeholder="Поиск по CRM" aria-label="Поиск по CRM">
+                    <button type="submit">Найти</button>
+                </form>
+                <div class="crm-user-menu">
+                    <button class="crm-admin-chip" type="button" aria-expanded="false" aria-haspopup="true">
+                        <span class="crm-admin-chip__avatar">{{ request.user.first_name|first }}{{ request.user.last_name|first }}</span>
+                        <span>
+                            <span class="crm-admin-chip__name">{{ request.user.first_name }} {{ request.user.last_name }}</span>
+                            <span class="crm-admin-chip__role">{{ request.user.get_role_display }}</span>
+                        </span>
+                        <span class="crm-user-menu__chevron" aria-hidden="true">
+                            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path d="M6 9l6 6 6-6"/>
+                            </svg>
+                        </span>
+                    </button>
+                    <div class="crm-user-menu__dropdown" hidden>
+                        <div class="crm-user-menu__summary">
+                            <span class="crm-admin-chip__avatar crm-admin-chip__avatar--large">{{ request.user.first_name|first }}{{ request.user.last_name|first }}</span>
+                            <div>
+                                <div class="crm-user-menu__summary-name">{{ request.user.first_name }} {{ request.user.last_name }}</div>
+                                <div class="crm-user-menu__summary-role">{{ request.user.get_role_display }}</div>
+                            </div>
+                        </div>
+                        <a class="crm-user-menu__item crm-user-menu__item--logout" href="{% url 'accounts:logout' %}">Выйти</a>
+                    </div>
+                </div>
+            </header>
+
+            <main class="crm-content">
+                {% block content %}{% endblock content %}
+            </main>
+        </div>
+    </div>
+    {% endwith %}
+    <script src="{% static 'crm/js/shell.js' %}" defer></script>
+    
+    {% block scripts %}{% endblock scripts %}
+</body>
+</html>

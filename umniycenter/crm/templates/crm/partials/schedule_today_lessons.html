@@ -1,0 +1,19 @@
+<div id="todayLessonsHost">
+    <div class="crm-data-panel__header">
+        <div><strong id="todayLessonsCount">{{ today_lessons|length }}</strong><span>занятий сегодня</span></div>
+        <span class="crm-data-panel__hint" id="todayDateLabel">{{ today|date:'d E Y' }}</span>
+    </div>
+    <div class="crm-today-lessons-list" id="todayLessonsList">
+        {% if today_lessons %}
+            {% for lesson in today_lessons %}
+                <article class="crm-today-lesson-card {% if selected_lesson and selected_lesson.id == lesson.id %}is-active{% endif %}" data-lesson-id="{{ lesson.id }}" hx-get="{% url 'crm:schedule_today_attendance' lesson.id %}" hx-target="#todayAttendanceHost" hx-swap="outerHTML">
+                    <div class="crm-today-lesson-card__time"><strong>{{ lesson.classdateStart|date:'H:i' }}</strong><span>{{ lesson.classdateEnd|time:'H:i' }}</span></div>
+                    <div class="crm-today-lesson-card__main"><h4>{{ lesson.title }}</h4><p>{{ lesson.teacher.get_full_name|default:lesson.teacher.username }}</p><span class="crm-status-badge crm-status-badge--{{ lesson.actual_status }}">{{ lesson.actual_status_label }}</span></div>
+                    <div class="crm-today-lesson-card__stats"><strong>{{ lesson.attendances.count }}</strong><span>отмечено</span></div>
+                </article>
+            {% endfor %}
+        {% else %}
+            <div class="crm-table-empty">На сегодня занятий нет</div>
+        {% endif %}
+    </div>
+</div>

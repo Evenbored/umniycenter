@@ -1,0 +1,43 @@
+{% extends 'crm/base.html' %}
+{% load static %}
+
+{% block title %}Группы - CRM{% endblock title %}
+{% block page_title %}Группы{% endblock page_title %}
+
+{% block links %}<link rel="stylesheet" href="{% static 'crm/css/groups.css' %}">{% endblock links %}
+
+{% block content %}
+<section class="crm-section-header">
+    <div><p class="crm-section-desc">Группы центра, преподаватели, курсы и состав учеников</p></div>
+    <div class="crm-section-actions">
+        <button class="crm-btn crm-btn--secondary" type="button" onclick="document.body.dispatchEvent(new CustomEvent('crm:toast', { detail: { type: 'info', title: 'Экспорт', message: 'Экспорт групп будет реализован позже.' } }))"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>Экспорт</button>
+        <button class="crm-btn crm-btn--primary" type="button" hx-get="{% url 'crm:group_drawer_create' %}" hx-target="#groupDrawerContent" hx-swap="outerHTML" hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('groupDetailsDrawer').classList.add('is-open')"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Добавить группу</button>
+        <button class="crm-btn crm-btn--primary" type="button" hx-get="{% url 'crm:groups_table' %}" hx-target="#groupsTableHost" hx-swap="innerHTML" hx-include="#groupsSearch, .crm-toolbar__filters, #groupsEmptyFilter"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>Обновить</button>
+    </div>
+</section>
+
+<section class="crm-toolbar">
+    <div class="crm-toolbar__search"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input type="search" id="groupsSearch" name="search" placeholder="Поиск по группе, курсу, преподавателю..." value="{{ request.GET.search|default:'' }}" hx-get="{% url 'crm:groups_table' %}" hx-trigger="keyup changed delay:300ms, search" hx-target="#groupsTableHost" hx-swap="innerHTML" hx-include=".crm-toolbar__filters, #groupsEmptyFilter"></div>
+    <div class="crm-toolbar__filters">
+        <select id="groupsCourseFilter" name="course" class="crm-select" hx-get="{% url 'crm:groups_table' %}" hx-trigger="change" hx-target="#groupsTableHost" hx-swap="innerHTML" hx-include="#groupsSearch, .crm-toolbar__filters, #groupsEmptyFilter"><option value="">Все курсы</option>{% for course in courses %}<option value="{{ course.id }}" {% if request.GET.course|add:'' == course.id|stringformat:'s' %}selected{% endif %}>{{ course.name }}</option>{% endfor %}</select>
+        <select id="groupsTeacherFilter" name="teacher" class="crm-select" hx-get="{% url 'crm:groups_table' %}" hx-trigger="change" hx-target="#groupsTableHost" hx-swap="innerHTML" hx-include="#groupsSearch, .crm-toolbar__filters, #groupsEmptyFilter"><option value="">Все преподаватели</option>{% for teacher in teachers %}<option value="{{ teacher.id }}" {% if request.GET.teacher|add:'' == teacher.id|stringformat:'s' %}selected{% endif %}>{{ teacher.get_full_name|default:teacher.username }}</option>{% endfor %}</select>
+        <select id="groupsStatusFilter" name="status" class="crm-select" hx-get="{% url 'crm:groups_table' %}" hx-trigger="change" hx-target="#groupsTableHost" hx-swap="innerHTML" hx-include="#groupsSearch, .crm-toolbar__filters, #groupsEmptyFilter"><option value="active" {% if request.GET.status|default:'active' == 'active' %}selected{% endif %}>Активные</option><option value="archive" {% if request.GET.status == 'archive' %}selected{% endif %}>Архивные</option><option value="" {% if request.GET.status == '' %}selected{% endif %}>Все</option></select>
+        <select id="groupsSortFilter" name="sort" class="crm-select" hx-get="{% url 'crm:groups_table' %}" hx-trigger="change" hx-target="#groupsTableHost" hx-swap="innerHTML" hx-include="#groupsSearch, .crm-toolbar__filters, #groupsEmptyFilter"><option value="name_az" {% if request.GET.sort|default:'name_az' == 'name_az' %}selected{% endif %}>По названию А-Я</option><option value="students_desc" {% if request.GET.sort == 'students_desc' %}selected{% endif %}>Больше учеников</option><option value="students_asc" {% if request.GET.sort == 'students_asc' %}selected{% endif %}>Меньше учеников</option></select>
+    </div>
+</section>
+
+<section class="crm-quick-filters"><label class="crm-checkbox-filter"><input type="checkbox" id="groupsEmptyFilter" name="empty" hx-get="{% url 'crm:groups_table' %}" hx-trigger="change" hx-target="#groupsTableHost" hx-swap="innerHTML" hx-include="#groupsSearch, .crm-toolbar__filters"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 11h-6"/></svg><span>Только пустые группы</span></label></section>
+
+<section class="crm-data-panel"><div id="groupsTableHost">{% include 'crm/partials/groups_table.html' %}</div></section>
+
+<aside class="crm-drawer" id="groupDetailsDrawer"><div class="crm-drawer__overlay" onclick="closeGroupDetailsDrawer()"></div>{% include 'crm/partials/group_drawer.html' %}</aside>
+{% include 'crm/partials/group_schedule_modal.html' %}
+{% endblock content %}
+
+{% block scripts %}
+<script>
+    function closeGroupDetailsDrawer() { document.getElementById('groupDetailsDrawer')?.classList.remove('is-open'); }
+    function closeScheduleTemplateModal() { document.getElementById('scheduleTemplateModal')?.classList.remove('is-open'); }
+    document.body.addEventListener('crm:close-schedule-template-modal', closeScheduleTemplateModal);
+</script>
+{% endblock scripts %}

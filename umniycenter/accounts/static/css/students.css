@@ -1,0 +1,154 @@
+.student-list-body {
+    font-family: Arial, sans-serif;
+    background-color: #f6f7ff;
+    margin: 20px;
+}
+
+.student-list-title {
+    font-size: 24px;
+}
+
+.student-list-container {
+    max-width: 1000px;
+    margin: auto;
+}
+
+.student-list-form-group {
+    margin-bottom: 15px;
+}
+
+.student-list-label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.student-list-input,
+.student-list-select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    margin-right: 5px;
+}
+
+.student-list-row {
+    display: flex;
+    gap: 10px;
+}
+
+.student-list-row .student-list-form-group {
+    flex: 1;
+}
+
+.student-list-actions {
+    margin-top: 20px;
+}
+
+.student-list-btn {
+    padding: 10px 15px;
+    border: 1px solid #007bff;
+    background-color: white;
+    color: #007bff;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.student-list-btn:hover {
+    background-color: #e7f1ff;
+}
+
+.student-list-note {
+    color: #1f77ff;
+    margin-top: 30px;
+    text-align: center;
+}
+
+.student-list-export-button {
+    float: right;
+    margin-top: -40px;
+}
+
+.student-list-quick-filters {
+    margin-top: 10px;
+    font-size: 14px;
+}
+
+.student-list-quick-filters a {
+    margin-right: 15px;
+    color: #1f77ff;
+    text-decoration: none;
+}
+
+.student-list-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 15px;
+    margin-top: 30px;
+}
+
+.student-list-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.student-list-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: #eef;
+}
+
+.student-list-name {
+    font-weight: bold;
+    font-size: 16px;
+    color: #007bff;
+    margin-bottom: 5px;
+}
+
+.student-list-status {
+    color: green;
+    font-size: 13px;
+}
+
+.student-list-metrics {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    margin-top: 5px;
+    color: #555;
+}
+
+.student-list-meta {
+    flex-grow: 1;
+    padding-left: 15px;
+}
+
+.student-list-org {
+    color: #007bff;
+    font-size: 14px;
+}
+
+.student-list-course {
+    color: #007bff;
+    font-size: 14px;
+}
+
+.student-list-menu {
+    border: 1px solid #007bff;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    text-align: center;
+    line-height: 26px;
+    font-size: 18px;
+    color: #007bff;
+    cursor: pointer;
+}

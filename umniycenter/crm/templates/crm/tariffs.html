@@ -1,0 +1,110 @@
+{% extends 'crm/base.html' %}
+{% load static %}
+
+{% block title %}Тарифы - CRM{% endblock title %}
+{% block page_title %}Тарифы{% endblock page_title %}
+
+{% block links %}
+<link rel="stylesheet" href="{% static 'crm/css/tariffs.css' %}">
+{% endblock links %}
+
+{% block content %}
+<section class="crm-section-header">
+    <div>
+        <p class="crm-section-desc">Тарифы по курсам: занятия, сроки, стоимость и пробные предложения</p>
+    </div>
+    <div class="crm-section-actions">
+        <button
+            class="crm-btn crm-btn--primary"
+            type="button"
+            hx-get="{% url 'crm:tariff_drawer_create' %}"
+            hx-target="#tariffDrawerContent"
+            hx-swap="outerHTML"
+            hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('tariffDrawer').classList.add('is-open')"
+        >
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M12 5v14M5 12h14"/>
+            </svg>
+            Создать тариф
+        </button>
+        <button
+            class="crm-btn crm-btn--primary"
+            type="button"
+            hx-get="{% url 'crm:tariffs_table' %}"
+            hx-target="#tariffsTableHost"
+            hx-swap="innerHTML"
+        >
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+            </svg>
+            Обновить
+        </button>
+    </div>
+</section>
+
+<section class="crm-toolbar">
+    <div class="crm-toolbar__search">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input
+            type="search"
+            id="tariffsSearch"
+            name="search"
+            placeholder="Поиск по названию или курсу..."
+            value="{{ request.GET.search|default:'' }}"
+            hx-get="{% url 'crm:tariffs_table' %}"
+            hx-trigger="keyup changed delay:300ms, search"
+            hx-target="#tariffsTableHost"
+            hx-swap="innerHTML"
+            hx-include=".crm-toolbar__filters"
+        >
+    </div>
+    <div class="crm-toolbar__filters">
+        <select id="tariffsCourseFilter" name="course" class="crm-select" hx-get="{% url 'crm:tariffs_table' %}" hx-trigger="change" hx-target="#tariffsTableHost" hx-swap="innerHTML" hx-include="#tariffsSearch, .crm-toolbar__filters">
+            <option value="">Все курсы</option>
+            {% for course in courses %}
+                <option value="{{ course.id }}" {% if request.GET.course == course.id|stringformat:'s' %}selected{% endif %}>{{ course.name }}</option>
+            {% endfor %}
+        </select>
+        <select id="tariffsStatusFilter" name="active" class="crm-select" hx-get="{% url 'crm:tariffs_table' %}" hx-trigger="change" hx-target="#tariffsTableHost" hx-swap="innerHTML" hx-include="#tariffsSearch, .crm-toolbar__filters">
+            <option value="">Все статусы</option>
+            <option value="true" {% if request.GET.active|default:'true' == 'true' %}selected{% endif %}>Активные</option>
+            <option value="false" {% if request.GET.active == 'false' %}selected{% endif %}>Архивные</option>
+        </select>
+        <select id="tariffsTypeFilter" name="subscription_type" class="crm-select" hx-get="{% url 'crm:tariffs_table' %}" hx-trigger="change" hx-target="#tariffsTableHost" hx-swap="innerHTML" hx-include="#tariffsSearch, .crm-toolbar__filters">
+            <option value="">Все абонементы</option>
+            <option value="group" {% if request.GET.subscription_type == 'group' %}selected{% endif %}>Групповые</option>
+            <option value="individual" {% if request.GET.subscription_type == 'individual' %}selected{% endif %}>Индивидуальные</option>
+        </select>
+        <select id="tariffsTrialFilter" name="trial" class="crm-select" hx-get="{% url 'crm:tariffs_table' %}" hx-trigger="change" hx-target="#tariffsTableHost" hx-swap="innerHTML" hx-include="#tariffsSearch, .crm-toolbar__filters">
+            <option value="">Все предложения</option>
+            <option value="paid" {% if request.GET.trial == 'paid' %}selected{% endif %}>Платные</option>
+            <option value="trial" {% if request.GET.trial == 'trial' %}selected{% endif %}>Пробные</option>
+        </select>
+    </div>
+</section>
+
+<section class="crm-data-panel">
+    <div id="tariffsTableHost">
+        {% include 'crm/partials/tariffs_table.html' %}
+    </div>
+</section>
+
+<aside class="crm-drawer" id="tariffDrawer">
+    <div class="crm-drawer__overlay" onclick="closeTariffDrawer()"></div>
+    {% include 'crm/partials/tariff_drawer.html' %}
+</aside>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+    function closeTariffDrawer() {
+        const drawer = document.getElementById('tariffDrawer');
+        drawer?.classList.remove('is-open');
+    }
+
+    document.body.addEventListener('crm:close-drawer', closeTariffDrawer);
+</script>
+{% endblock scripts %}

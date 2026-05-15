@@ -1,0 +1,185 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %}</title>
+    <link href="{% static 'bootstrap\css\bootstrap.min.css' %}" rel="stylesheet">
+
+    <script src="{% static 'vendor/htmx/htmx.min.js' %}" defer></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600&family=Inter:wght@600&family=Lobster+Two:wght@700&display=swap"
+        rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+
+    <!-- Icon Font Stylesheet -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- Libraries Stylesheet -->
+    <link href="{% static 'lib\animate\animate.min.css' %}" rel="stylesheet">
+    <link href="{% static 'lib\owlcarousel\assets\owl.carousel.min.css' %}" rel="stylesheet">
+
+    <!-- Customized Bootstrap Stylesheet -->
+    <link rel="stylesheet" type="text/css" href="{% static 'css/profile.css' %}" />
+    <!-- Template Stylesheet -->
+    <link type="text/css" href="{% static 'css\style.css' %}" rel="stylesheet">
+    {% block links %}{% endblock links %}
+
+</head>
+
+<body>
+    {% with request.resolver_match.url_name as url_name %}
+    <button class="mobile-menu-toggle" id="mobileMenuToggle">
+        <i class="fas fa-bars"></i>
+    </button>
+    
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    
+    <div class="d-flex">
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/profile" class="sidebar-logo">
+                    <img src="{% static 'img/logo.png' %}" alt="Центр УМный">
+                </a>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="{% url 'accounts:profile' %}" class="sidebar-link {% if url_name == 'profile' %}active{% endif %}">
+                    <i class="fas fa-home"></i>
+                    <span>Главная</span>
+                </a>
+                
+                {% if request.user.role == 0 %}
+                <a href="{% url 'students:students_view' %}" class="sidebar-link {% if url_name == 'students_view' %}active{% endif %}">
+                    <i class="fas fa-user-graduate"></i>
+                    <span>Ученики</span>
+                </a>
+                
+                <a href="#" class="sidebar-link {% if url_name == 'groups' %}active{% endif %}">
+                    <i class="fas fa-users"></i>
+                    <span>Группы</span>
+                </a>
+                {% endif %}
+                
+                <a href="{% url 'homework:homework_view' %}" class="sidebar-link {% if url_name == 'homework_view' %}active{% endif %}">
+                    <i class="fas fa-book"></i>
+                    <span>Домашнее задание</span>
+                </a>
+                
+                <a href="#" class="sidebar-link">
+                    <i class="fas fa-dumbbell"></i>
+                    <span>Тренажер</span>
+                </a>
+                
+                <a href="#" class="sidebar-link">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Расписание</span>
+                </a>
+                
+                {% if request.user.role == 3 %}
+                <a href="{% url "accounts:messages" %}" class="sidebar-link {% if url_name == 'messages' %}active{% endif %}">
+                    <i class="fas fa-envelope"></i>
+                    <span>Сообщения</span>
+                </a>
+                {% endif %}
+            </nav>
+        {% endwith %}
+        </div>
+        <div class="um-container py-4">
+            <div class="trainer-topbar">
+                <div class="trainer-topbar__actions">
+                    {% if request.user.role == 0 %}
+                    <a class="pill-button" href="{% url "groups:grade" %}">
+                        <span class="pill-button__label">Классы</span>
+                            <svg width="22" height="22" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" style="fill: #f0a500; flex-shrink: 0;">
+                                <path d="M17.7778 0H2.22222C1 0 0 1 0 2.22222V17.7778C0 19 1 20 2.22222 20H17.7778C19 20 20 19 20 17.7778V2.22222C20 1 19 0 17.7778 0ZM6.66667 15.5556H4.44444V13.3333H6.66667V15.5556ZM6.66667 11.1111H4.44444V8.88889H6.66667V11.1111ZM6.66667 6.66667H4.44444V4.44444H6.66667V6.66667ZM15.5556 15.5556H7.77778V13.3333H15.5556V15.5556ZM15.5556 11.1111H7.77778V8.88889H15.5556V11.1111ZM15.5556 6.66667H7.77778V4.44444H15.5556V6.66667Z"></path>
+                            </svg>
+                        <span id="groups-count" class="pill-button__number"></span>
+                        </a> 
+                    <a class="pill-button" href="{% url "students:students_view" %}">
+                        <span class="pill-button__label">Ученики</span>
+                            <svg width="22" height="22" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" style="fill: #f0a500; flex-shrink: 0;">
+                                <path d="M10 0.000976562C4.47773 0.000976562 0 4.47783 0 10.0005C0 15.5232 4.47729 20.0001 10 20.0001C15.5231 20.0001 20 15.5232 20 10.0005C20 4.47783 15.5231 0.000976562 10 0.000976562ZM10 2.99096C11.8273 2.99096 13.308 4.47212 13.308 6.29853C13.308 8.12537 11.8273 9.60609 10 9.60609C8.17359 9.60609 6.69288 8.12537 6.69288 6.29853C6.69288 4.47212 8.17359 2.99096 10 2.99096ZM9.9978 17.3857C8.17535 17.3857 6.50619 16.722 5.21875 15.6234C4.90512 15.3559 4.72415 14.9636 4.72415 14.5521C4.72415 12.6997 6.22332 11.2173 8.07608 11.2173H11.9248C13.778 11.2173 15.2715 12.6997 15.2715 14.5521C15.2715 14.9641 15.0914 15.3555 14.7773 15.623C13.4903 16.722 11.8207 17.3857 9.9978 17.3857Z"></path>
+                            </svg>
+                        <span id="students-count" class="pill-button__number"></span>
+                        </a>
+                    {% endif %}
+                    {% if request.user.role == 2 %}
+                    <a class="pill-button" href="{% url "crm:dashboard" %}">
+                        <span class="pill-button__label">Перейти в CRM</span>
+                            <svg width="22" height="22" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" style="fill: #f0a500; flex-shrink: 0;">
+                                <path d="M18 0H2C0.9 0 0 0.9 0 2V18C0 19.1 0.9 20 2 20H18C19.1 20 20 19.1 20 18V2C20 0.9 19.1 0 18 0ZM18 18H2V2H18V18ZM4 14H10V16H4V14ZM4 10H10V12H4V10ZM4 6H10V8H4V6ZM12 6H16V10H12V6ZM12 12H16V16H12V12Z"></path>
+                            </svg>
+                        </a>
+                    {% endif %}
+                </div>
+                <div class="trainer-user-menu" data-current-user-api="{% url 'api:user_me' %}">
+                    <button class="trainer-user-menu__button" type="button" aria-expanded="false" aria-haspopup="true">
+                        <span class="trainer-user-menu__avatar" data-user-initials>{{ request.user.first_name|first }}{{ request.user.last_name|first }}</span>
+                        <span class="trainer-user-menu__meta">
+                            <span class="trainer-user-menu__name" data-user-name>{{ request.user.first_name }} {{ request.user.last_name }}</span>
+                            <span class="trainer-user-menu__role" data-user-role>{{ request.user.get_role_display }}</span>
+                        </span>
+                        <span class="trainer-user-menu__chevron" aria-hidden="true">v</span>
+                    </button>
+                    <div class="trainer-user-menu__dropdown" hidden>
+                        <div class="trainer-user-menu__summary">
+                            <span class="trainer-user-menu__avatar trainer-user-menu__avatar--large" data-user-initials>{{ request.user.first_name|first }}{{ request.user.last_name|first }}</span>
+                            <div>
+                                <div class="trainer-user-menu__summary-name" data-user-name>{{ request.user.first_name }} {{ request.user.last_name }}</div>
+                                <div class="trainer-user-menu__summary-role" data-user-role>{{ request.user.get_role_display }}</div>
+                                <div class="trainer-user-menu__summary-email" data-user-email>{{ request.user.email }}</div>
+                            </div>
+                        </div>
+                        <a class="trainer-user-menu__item" href="{% url 'accounts:profile' %}">Мой профиль</a>
+                        <a class="trainer-user-menu__item" href="{% url 'accounts:edit_account_details' %}">Настройки профиля</a>
+                        <a class="trainer-user-menu__item trainer-user-menu__item--logout" href="{% url 'accounts:logout' %}">Выйти</a>
+                    </div>
+                </div>
+            </div>
+            <div class="profile-card">
+                {% block content %}
+                {% endblock content %}
+            </div>
+        </div>
+    </div>
+    <script>
+    function active(target){
+    var items=document.getElementsByClassName("main-nav-item");
+    for(var i=0;i<items.length;i++){
+       items[i].classList.remove("active");
+    }
+    target.classList.toggle("active");
+    }
+    
+    // Mobile menu toggle
+    document.addEventListener('DOMContentLoaded', function() {
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+        
+        if (mobileMenuToggle) {
+            mobileMenuToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('active');
+                sidebarOverlay.classList.toggle('active');
+            });
+        }
+        
+        if (sidebarOverlay) {
+            sidebarOverlay.addEventListener('click', function() {
+                sidebar.classList.remove('active');
+                sidebarOverlay.classList.remove('active');
+            });
+        }
+    });
+    </script>
+    <script src="{% static 'js/trainer_base.js' %}" defer></script>
+    {% block scripts %}
+    {% endblock scripts %}
+</body>
+</html>

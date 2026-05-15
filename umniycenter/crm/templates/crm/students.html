@@ -1,0 +1,94 @@
+{% extends 'crm/base.html' %}
+{% load static %}
+
+{% block title %}Ученики - CRM{% endblock title %}
+{% block page_title %}Ученики{% endblock page_title %}
+
+{% block links %}
+<link rel="stylesheet" href="{% static 'crm/css/students.css' %}">
+{% endblock links %}
+
+{% block content %}
+<section class="crm-section-header">
+    <div>
+        <p class="crm-section-desc">Единый список учеников, контактов, групп и статусов</p>
+    </div>
+    <div class="crm-section-actions">
+        <button class="crm-btn crm-btn--secondary" type="button" onclick="document.body.dispatchEvent(new CustomEvent('crm:toast', { detail: { type: 'info', title: 'Экспорт', message: 'Экспорт учеников будет реализован позже.' } }))">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
+            Экспорт
+        </button>
+        <button class="crm-btn crm-btn--primary" type="button" hx-get="{% url 'crm:student_drawer_create' %}" hx-target="#studentDrawerContent" hx-swap="outerHTML" hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('studentDetailsDrawer').classList.add('is-open')">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            Добавить ученика
+        </button>
+        <button class="crm-btn crm-btn--primary" type="button" hx-get="{% url 'crm:students_table' %}" hx-target="#studentsTableHost" hx-swap="innerHTML" hx-include="#studentsSearch, .crm-toolbar__filters, #studentsWithoutGroupFilter">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+            Обновить
+        </button>
+    </div>
+</section>
+
+<section class="crm-toolbar">
+    <div class="crm-toolbar__search">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="search" id="studentsSearch" name="search" placeholder="Поиск по ФИО, телефону, email, городу..." value="{{ request.GET.search|default:'' }}" hx-get="{% url 'crm:students_table' %}" hx-trigger="keyup changed delay:300ms, search" hx-target="#studentsTableHost" hx-swap="innerHTML" hx-include=".crm-toolbar__filters, #studentsWithoutGroupFilter">
+    </div>
+    <div class="crm-toolbar__filters">
+        <select id="studentsCourseFilter" name="course" class="crm-select" hx-get="{% url 'crm:students_table' %}" hx-trigger="change" hx-target="#studentsTableHost" hx-swap="innerHTML" hx-include="#studentsSearch, .crm-toolbar__filters, #studentsWithoutGroupFilter">
+            <option value="">Все курсы</option>
+            {% for course in courses %}<option value="{{ course.id }}" {% if request.GET.course|add:'' == course.id|stringformat:'s' %}selected{% endif %}>{{ course.name }}</option>{% endfor %}
+        </select>
+        <select id="studentsGroupFilter" name="group" class="crm-select" hx-get="{% url 'crm:students_table' %}" hx-trigger="change" hx-target="#studentsTableHost" hx-swap="innerHTML" hx-include="#studentsSearch, .crm-toolbar__filters, #studentsWithoutGroupFilter">
+            <option value="">Все группы</option>
+            {% for group in groups %}<option value="{{ group.id }}" {% if request.GET.group|add:'' == group.id|stringformat:'s' %}selected{% endif %}>{{ group.course.name }} · {{ group.number }}</option>{% endfor %}
+        </select>
+        <select id="studentsStatusFilter" name="status" class="crm-select" hx-get="{% url 'crm:students_table' %}" hx-trigger="change" hx-target="#studentsTableHost" hx-swap="innerHTML" hx-include="#studentsSearch, .crm-toolbar__filters, #studentsWithoutGroupFilter">
+            <option value="active" {% if request.GET.status|default:'active' == 'active' %}selected{% endif %}>Активные</option>
+            <option value="archive" {% if request.GET.status == 'archive' %}selected{% endif %}>Архивные</option>
+            <option value="" {% if request.GET.status == '' %}selected{% endif %}>Все</option>
+        </select>
+        <select id="studentsSortFilter" name="sort" class="crm-select" hx-get="{% url 'crm:students_table' %}" hx-trigger="change" hx-target="#studentsTableHost" hx-swap="innerHTML" hx-include="#studentsSearch, .crm-toolbar__filters, #studentsWithoutGroupFilter">
+            <option value="name_az" {% if request.GET.sort|default:'name_az' == 'name_az' %}selected{% endif %}>По имени А-Я</option>
+            <option value="name_za" {% if request.GET.sort == 'name_za' %}selected{% endif %}>По имени Я-А</option>
+            <option value="date_new" {% if request.GET.sort == 'date_new' %}selected{% endif %}>Сначала новые</option>
+            <option value="date_old" {% if request.GET.sort == 'date_old' %}selected{% endif %}>Сначала старые</option>
+        </select>
+    </div>
+</section>
+
+<section class="crm-quick-filters">
+    <label class="crm-checkbox-filter">
+        <input type="checkbox" id="studentsWithoutGroupFilter" name="without_group" hx-get="{% url 'crm:students_table' %}" hx-trigger="change" hx-target="#studentsTableHost" hx-swap="innerHTML" hx-include="#studentsSearch, .crm-toolbar__filters">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>Только ученики без группы</span>
+    </label>
+</section>
+
+<section class="crm-data-panel">
+    <div id="studentsTableHost">
+        {% include 'crm/partials/students_table.html' %}
+    </div>
+</section>
+
+<aside class="crm-drawer" id="studentDetailsDrawer">
+    <div class="crm-drawer__overlay" onclick="closeStudentDetailsDrawer()"></div>
+    {% include 'crm/partials/student_drawer.html' %}
+</aside>
+
+{% include 'crm/partials/student_buy_tariff_modal.html' %}
+{% endblock content %}
+
+{% block scripts %}
+<script>
+    function closeStudentDetailsDrawer() {
+        document.getElementById('studentDetailsDrawer')?.classList.remove('is-open');
+    }
+
+    function closeBuyTariffModal() {
+        document.getElementById('buyTariffModal')?.classList.remove('is-open');
+    }
+
+    document.body.addEventListener('crm:close-buy-tariff-modal', closeBuyTariffModal);
+</script>
+{% endblock scripts %}

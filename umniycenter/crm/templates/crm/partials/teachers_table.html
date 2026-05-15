@@ -1,0 +1,40 @@
+<div class="crm-data-panel__header">
+    <div>
+        <strong id="teachersCount">{{ teachers_count }}</strong>
+        <span>учителей найдено</span>
+    </div>
+    <span class="crm-data-panel__hint">Клик по строке открывает карточку учителя</span>
+</div>
+
+<div class="crm-table-wrapper">
+    <table class="crm-table" id="teachersTable">
+        <thead>
+            <tr>
+                <th>Учитель</th>
+                <th>Контакты</th>
+                <th>Город</th>
+                <th>Группы</th>
+                <th>Дата регистрации</th>
+                <th>Статус</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody id="teachersTableBody">
+            {% if teachers %}
+                {% for teacher in teachers %}
+                    <tr hx-get="{% url 'crm:teacher_drawer_edit' teacher.id %}" hx-target="#teacherDrawerContent" hx-swap="outerHTML" hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('teacherDetailsDrawer').classList.add('is-open')">
+                        <td><div class="crm-table-name">{{ teacher.get_full_name|default:teacher.username }}</div><div class="crm-table-meta">@{{ teacher.username }}</div></td>
+                        <td><div class="crm-table-contact">{{ teacher.phone|default:'-' }}</div><div class="crm-table-contact">{{ teacher.email|default:'-' }}</div></td>
+                        <td>{{ teacher.city|default:'-' }}</td>
+                        <td><span class="crm-badge crm-badge--blue">{{ teacher.schoolgroups_set.count }} групп</span></td>
+                        <td>{{ teacher.date_joined|date:'d.m.Y' }}</td>
+                        <td>{% if teacher.is_active %}<span class="crm-status-badge crm-status-badge--active">Активный</span>{% else %}<span class="crm-status-badge crm-status-badge--archive">Архивный</span>{% endif %}</td>
+                        <td><button class="crm-table-action-btn" type="button" hx-get="{% url 'crm:teacher_drawer_edit' teacher.id %}" hx-target="#teacherDrawerContent" hx-swap="outerHTML" hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('teacherDetailsDrawer').classList.add('is-open')" title="Открыть карточку"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></td>
+                    </tr>
+                {% endfor %}
+            {% else %}
+                <tr><td colspan="7" class="crm-table-empty">Учителя не найдены. Попробуйте изменить поиск.</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>

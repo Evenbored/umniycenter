@@ -1,0 +1,27 @@
+<div id="scheduleTemplatesHost">
+    <div class="crm-data-panel__header">
+        <div>
+            <strong id="templatesCount">{{ schedule_templates|length }}</strong>
+            <span>шаблонов</span>
+        </div>
+        <button class="crm-btn crm-btn--primary" type="button" hx-get="{% url 'crm:schedule_template_create' %}" hx-target="#scheduleTemplateModal" hx-swap="outerHTML" hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('scheduleTemplateModal').classList.add('is-open')">Добавить</button>
+    </div>
+    <div class="crm-template-list" id="templateList">
+        {% if schedule_templates %}
+            {% for template in schedule_templates %}
+                <article class="crm-template-card" hx-get="{% url 'crm:schedule_template_edit' template.id %}" hx-target="#scheduleTemplateModal" hx-swap="outerHTML" hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('scheduleTemplateModal').classList.add('is-open')">
+                    <div class="crm-template-card__top">
+                        <div>
+                            <h4 class="crm-template-card__title">{{ template.group }}</h4>
+                            <div class="crm-template-card__meta">{{ template.get_weekday_display }} · {{ template.start_time|time:'H:i' }} · {{ template.get_lessons_count_display }}</div>
+                        </div>
+                        {% if template.is_active %}<span class="crm-status-badge crm-status-badge--active">Активен</span>{% else %}<span class="crm-status-badge crm-status-badge--archive">Архив</span>{% endif %}
+                    </div>
+                    <div class="crm-table-meta">{{ template.group.teacher }}</div>
+                </article>
+            {% endfor %}
+        {% else %}
+            <div class="crm-table-empty">Шаблоны стандартного времени не настроены.</div>
+        {% endif %}
+    </div>
+</div>

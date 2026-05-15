@@ -1,0 +1,28 @@
+<div id="messagesSidebarContent" {% if sidebar_oob %}hx-swap-oob="outerHTML"{% endif %}>
+    <div class="crm-messages-sidebar__header">
+        <div class="crm-toolbar__search">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="search" id="ticketsSearch" name="search" placeholder="Поиск по имени родителя..." value="{{ request.GET.search|default:'' }}" hx-get="{% url 'crm:messages_tickets' %}" hx-trigger="keyup changed delay:300ms, search" hx-target="#messagesSidebarContent" hx-swap="outerHTML" hx-include="#messagesStatus, #dateFilter, #selectedTicketId">
+        </div>
+    </div>
+
+    <input type="hidden" id="messagesStatus" name="status" value="{{ status }}">
+    <input type="hidden" id="selectedTicketId" name="selected_ticket_id" value="{% if selected_ticket %}{{ selected_ticket.id }}{% endif %}">
+    <div class="crm-messages-filters">
+        <button class="crm-filter-btn {% if status == 'all' %}active{% endif %}" type="button" hx-get="{% url 'crm:messages_tickets' %}?status=all" hx-target="#messagesSidebarContent" hx-swap="outerHTML" hx-include="#ticketsSearch, #dateFilter, #selectedTicketId">Все <span class="crm-filter-count">{{ all_count }}</span></button>
+        <button class="crm-filter-btn {% if status == 'open' %}active{% endif %}" type="button" hx-get="{% url 'crm:messages_tickets' %}?status=open" hx-target="#messagesSidebarContent" hx-swap="outerHTML" hx-include="#ticketsSearch, #dateFilter, #selectedTicketId">Новые <span class="crm-filter-count">{{ open_count }}</span></button>
+        <button class="crm-filter-btn {% if status == 'in_progress' %}active{% endif %}" type="button" hx-get="{% url 'crm:messages_tickets' %}?status=in_progress" hx-target="#messagesSidebarContent" hx-swap="outerHTML" hx-include="#ticketsSearch, #dateFilter, #selectedTicketId">В работе <span class="crm-filter-count">{{ in_progress_count }}</span></button>
+        <button class="crm-filter-btn {% if status == 'closed' %}active{% endif %}" type="button" hx-get="{% url 'crm:messages_tickets' %}?status=closed" hx-target="#messagesSidebarContent" hx-swap="outerHTML" hx-include="#ticketsSearch, #dateFilter, #selectedTicketId">Закрытые <span class="crm-filter-count">{{ closed_count }}</span></button>
+    </div>
+
+    <div class="crm-messages-date-filter">
+        <select id="dateFilter" name="period" class="crm-select" hx-get="{% url 'crm:messages_tickets' %}" hx-trigger="change" hx-target="#messagesSidebarContent" hx-swap="outerHTML" hx-include="#ticketsSearch, #messagesStatus, #selectedTicketId">
+            <option value="all" {% if period == 'all' %}selected{% endif %}>Все время</option>
+            <option value="today" {% if period == 'today' %}selected{% endif %}>Сегодня</option>
+            <option value="week" {% if period == 'week' %}selected{% endif %}>Эта неделя</option>
+            <option value="month" {% if period == 'month' %}selected{% endif %}>Этот месяц</option>
+        </select>
+    </div>
+
+    {% include 'crm/partials/messages_tickets.html' %}
+</div>

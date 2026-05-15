@@ -1,0 +1,29 @@
+<div class="crm-modal" id="scheduleTemplateModal" {% if not selected_template %}hx-swap-oob="outerHTML"{% endif %}>
+    <div class="crm-modal__overlay" onclick="closeScheduleTemplateModal()"></div>
+    <div class="crm-modal__content">
+        <div class="crm-modal__header">
+            <h3>{% if selected_template %}Редактировать стандартное время{% else %}Добавить стандартное время{% endif %}</h3>
+            <button class="crm-modal__close" type="button" onclick="closeScheduleTemplateModal()">×</button>
+        </div>
+        <div class="crm-modal__body">
+            <form id="scheduleTemplateForm" hx-post="{% if selected_template %}{% url 'crm:schedule_template_save_edit' selected_template.id %}{% else %}{% url 'crm:schedule_template_save_create' %}{% endif %}" hx-target="#scheduleTemplatesHost" hx-swap="outerHTML" hx-include="#scheduleTemplateForm">
+                {% csrf_token %}
+                {% if not selected_template %}
+                <div class="crm-form-field"><span>Группа *</span><select name="group" required>{% for group in groups %}<option value="{{ group.id }}" {% if template_form.group == group.id|stringformat:'s' %}selected{% endif %}>{{ group.course.name }} · {{ group.number }}</option>{% endfor %}</select></div>
+                {% endif %}
+                <div class="crm-form-field"><span>День недели *</span><select name="weekday" required><option value="0" {% if template_form.weekday == '0' %}selected{% endif %}>Понедельник</option><option value="1" {% if template_form.weekday == '1' %}selected{% endif %}>Вторник</option><option value="2" {% if template_form.weekday == '2' %}selected{% endif %}>Среда</option><option value="3" {% if template_form.weekday == '3' %}selected{% endif %}>Четверг</option><option value="4" {% if template_form.weekday == '4' %}selected{% endif %}>Пятница</option><option value="5" {% if template_form.weekday == '5' %}selected{% endif %}>Суббота</option><option value="6" {% if template_form.weekday == '6' %}selected{% endif %}>Воскресенье</option></select></div>
+                <div class="crm-form-field"><span>Время начала *</span><input name="start_time" type="time" value="{{ template_form.start_time|time:'H:i' }}" required></div>
+                <div class="crm-form-field"><span>Длительность *</span><select name="lessons_count" required><option value="1" {% if template_form.lessons_count == '1' %}selected{% endif %}>1 занятие (45 минут)</option><option value="2" {% if template_form.lessons_count == '2' %}selected{% endif %}>2 занятия (90 минут)</option></select></div>
+                <label class="crm-checkbox-line"><input type="checkbox" name="is_active" {% if template_form.is_active %}checked{% endif %}><span>Активный шаблон</span></label>
+                <div class="crm-form-alert" {% if not form_error %}hidden{% endif %}>{{ form_error|default:'' }}</div>
+            </form>
+        </div>
+        <div class="crm-modal__footer">
+            <button class="crm-btn crm-btn--secondary" type="button" onclick="closeScheduleTemplateModal()">Отмена</button>
+            {% if selected_template %}
+            <button class="crm-btn crm-btn--danger" type="button" hx-post="{% url 'crm:schedule_template_delete' selected_template.id %}" hx-target="#scheduleTemplatesHost" hx-swap="outerHTML" hx-confirm="Удалить шаблон?">Удалить</button>
+            {% endif %}
+            <button class="crm-btn crm-btn--primary" type="submit" form="scheduleTemplateForm">{% if selected_template %}Сохранить{% else %}Добавить{% endif %}</button>
+        </div>
+    </div>
+</div>

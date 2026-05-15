@@ -1,0 +1,42 @@
+<div class="crm-drawer__panel" id="lessonDrawerContent">
+    {% if selected_lesson %}
+    <header class="crm-drawer__header">
+        <div>
+            <h3>Занятие #{{ selected_lesson.id }}</h3>
+            <p>{{ selected_lesson.actual_status_label }}</p>
+        </div>
+        <button class="crm-btn-icon" type="button" onclick="closeLessonDrawer()" aria-label="Закрыть">×</button>
+    </header>
+    <div class="crm-drawer__content">
+        <div class="crm-form-alert" id="lessonAlert" {% if not form_error %}hidden{% endif %}>{{ form_error }}</div>
+        <div class="crm-info-grid">
+            <div class="crm-info-item"><span class="crm-info-label">Группа</span><strong>{{ selected_lesson.title }}</strong></div>
+            <div class="crm-info-item"><span class="crm-info-label">Тип</span><strong>{{ selected_lesson.get_lesson_type_display }}</strong></div>
+            <div class="crm-info-item"><span class="crm-info-label">Курс</span><strong>{{ selected_lesson.course_name|default:'-' }}</strong></div>
+            <div class="crm-info-item"><span class="crm-info-label">Ученик</span><strong>{{ selected_lesson.student.get_full_name|default:'-' }}</strong></div>
+            <div class="crm-info-item"><span class="crm-info-label">Преподаватель</span><strong>{{ selected_lesson.teacher.get_full_name|default:selected_lesson.teacher.username }}</strong></div>
+            <div class="crm-info-item"><span class="crm-info-label">Начало</span><strong>{{ selected_lesson.classdateStart|date:'d.m.Y H:i' }}</strong></div>
+            <div class="crm-info-item"><span class="crm-info-label">Окончание</span><strong>{{ selected_lesson.classdateEnd|time:'H:i' }}</strong></div>
+        </div>
+        <hr class="crm-divider">
+        <form id="rescheduleForm" class="crm-form" hx-post="{% url 'crm:schedule_lesson_reschedule' selected_lesson.id %}" hx-target="#lessonDrawerContent" hx-swap="outerHTML" hx-include="#scheduleFiltersForm">
+            <label class="crm-form-field"><span>Новая дата и время</span><input name="classdateStart" type="datetime-local" value="{{ selected_lesson.classdateStart|date:'Y-m-d\\TH:i' }}"></label>
+            <label class="crm-form-field"><span>Формат занятия</span><select name="lesson_type"><option value="regular" {% if selected_lesson.lesson_type == 'regular' %}selected{% endif %}>Постоянное</option><option value="single" {% if selected_lesson.lesson_type == 'single' %}selected{% endif %}>Разовое</option></select></label>
+            <label class="crm-form-field"><span>Длительность</span><select name="lessons_count"><option value="1">1 занятие (45 минут)</option><option value="2" selected>2 занятия (90 минут)</option></select></label>
+            <label class="crm-form-field"><span>Причина переноса</span><input name="reason" type="text" value="{{ selected_lesson.reschedule_reason }}"></label>
+        </form>
+        <form id="cancelLessonForm" hx-post="{% url 'crm:schedule_lesson_cancel' selected_lesson.id %}" hx-target="#lessonDrawerContent" hx-swap="outerHTML" hx-include="#scheduleFiltersForm">
+            <label class="crm-form-field"><span>Причина отмены</span><input name="reason" type="text" value="{{ selected_lesson.cancel_reason }}"></label>
+        </form>
+        <hr class="crm-divider">
+        <div class="crm-drawer-section"><h4>Посещаемость</h4>{% include 'crm/partials/schedule_attendance.html' %}</div>
+    </div>
+    <footer class="crm-drawer__footer">
+        <button class="crm-btn crm-btn--secondary" type="button" onclick="closeLessonDrawer()">Закрыть</button>
+        <button class="crm-btn crm-btn--danger" type="submit" form="cancelLessonForm" hx-confirm="Отменить занятие?">Отменить</button>
+        <button class="crm-btn crm-btn--primary" type="submit" form="rescheduleForm">Перенести</button>
+    </footer>
+    {% else %}
+    <div class="crm-drawer__content"><div class="crm-table-empty">Выберите занятие</div></div>
+    {% endif %}
+</div>

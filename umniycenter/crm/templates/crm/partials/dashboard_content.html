@@ -1,0 +1,280 @@
+<div x-data="dashboardPage()" x-init="init()" hx-on::before-request="loading = true" hx-on::after-request="loading = false">
+<section class="dashboard-row-1">
+    <div class="dashboard-calendar-card">
+        <div class="calendar-header">
+            <h3>Календарь</h3>
+            <p>Выберите дату</p>
+        </div>
+        <div class="calendar-wrapper">
+            <div class="calendar-controls">
+                <button class="calendar-nav-btn" type="button" @click.prevent="navigateMonth('prev')" aria-label="Предыдущий месяц">
+                    <svg width="20" height="20" fill="none" stroke="#111827" stroke-width="3" viewBox="0 0 24 24">
+                        <path d="M15 18l-6-6 6-6"/>
+                    </svg>
+                </button>
+                <div class="calendar-current-month" x-text="calendar.month_label">{{ dashboard.calendar.month_label }}</div>
+                <button class="calendar-nav-btn" type="button" @click.prevent="navigateMonth('next')" aria-label="Следующий месяц">
+                    <svg width="20" height="20" fill="none" stroke="#111827" stroke-width="3" viewBox="0 0 24 24">
+                        <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="calendar-grid">
+                <template x-for="day in calendar.weekdays" :key="day">
+                    <div class="calendar-day-header" x-text="day"></div>
+                </template>
+                <template x-for="week in calendar.weeks" :key="week[0].date_iso">
+                    <template x-for="day in week" :key="day.date_iso">
+                        <button
+                            type="button"
+                            class="calendar-day"
+                            :class="{
+                                'is-other-month': !day.is_current_month,
+                                'is-today': day.is_today,
+                                'is-selected': day.is_selected,
+                            }"
+                            x-text="day.day"
+                            @click.prevent="selectDate(day.date_iso)"
+                        ></button>
+                    </template>
+                </template>
+            </div>
+            <div class="calendar-selected-date">
+                <span>Выбрано:</span>
+                <strong x-text="calendar.selected_date_display">{{ dashboard.calendar.selected_date_display }}</strong>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-sales-wrapper">
+        <h3 class="sales-section-title" x-text="titles.sales">Продажи за выбранную дату</h3>
+        <div class="sales-grid">
+            <div class="sales-card">
+                <div class="sales-card-header">
+                    <h4>Абонементы</h4>
+                    <span class="sales-info-icon" title="Групповые и индивидуальные абонементы">?</span>
+                </div>
+                <div class="sales-chart-wrapper">
+                    <svg class="sales-circle-chart" viewBox="0 0 200 200">
+                        <circle class="sales-circle-bg" cx="100" cy="100" r="80" />
+                        <circle class="sales-circle-progress sales-circle-group" cx="100" cy="100" r="80" :stroke-dasharray="circles.subscriptionsGroup" id="subscriptionsGroupCircle"/>
+                        <circle class="sales-circle-progress sales-circle-individual" cx="100" cy="100" r="80" :stroke-dasharray="circles.subscriptionsIndividual" id="subscriptionsIndividualCircle"/>
+                    </svg>
+                    <div class="sales-value">
+                        <span class="sales-number" x-text="dashboard.subscriptions.total">{{ dashboard.subscriptions.total }}</span>
+                        <span class="sales-label">шт</span>
+                    </div>
+                </div>
+                <div class="sales-legend">
+                    <div class="sales-legend-item">
+                        <span class="sales-legend-dot sales-legend-dot--group"></span>
+                        <span>Групповые: <strong x-text="dashboard.subscriptions.group">{{ dashboard.subscriptions.group }}</strong></span>
+                    </div>
+                    <div class="sales-legend-item">
+                        <span class="sales-legend-dot sales-legend-dot--individual"></span>
+                        <span>Индивидуальные: <strong x-text="dashboard.subscriptions.individual">{{ dashboard.subscriptions.individual }}</strong></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sales-card">
+                <div class="sales-card-header">
+                    <h4>Разовые занятия</h4>
+                    <span class="sales-info-icon" title="Групповые и индивидуальные разовые занятия">?</span>
+                </div>
+                <div class="sales-chart-wrapper">
+                    <svg class="sales-circle-chart" viewBox="0 0 200 200">
+                        <circle class="sales-circle-bg" cx="100" cy="100" r="80" />
+                        <circle class="sales-circle-progress sales-circle-group" cx="100" cy="100" r="80" :stroke-dasharray="circles.singleGroup" id="singleLessonsGroupCircle"/>
+                        <circle class="sales-circle-progress sales-circle-individual" cx="100" cy="100" r="80" :stroke-dasharray="circles.singleIndividual" id="singleLessonsIndividualCircle"/>
+                    </svg>
+                    <div class="sales-value">
+                        <span class="sales-number" x-text="dashboard.singleLessons.total">{{ dashboard.singleLessons.total }}</span>
+                        <span class="sales-label">шт</span>
+                    </div>
+                </div>
+                <div class="sales-legend">
+                    <div class="sales-legend-item">
+                        <span class="sales-legend-dot sales-legend-dot--group"></span>
+                        <span>Групповые: <strong x-text="dashboard.singleLessons.group">{{ dashboard.singleLessons.group }}</strong></span>
+                    </div>
+                    <div class="sales-legend-item">
+                        <span class="sales-legend-dot sales-legend-dot--individual"></span>
+                        <span>Индивидуальные: <strong x-text="dashboard.singleLessons.individual">{{ dashboard.singleLessons.individual }}</strong></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sales-card">
+                <div class="sales-card-header">
+                    <h4>Товары</h4>
+                    <span class="sales-info-icon" title="Учебные материалы и товары">?</span>
+                </div>
+                <div class="sales-chart-wrapper">
+                    <svg class="sales-circle-chart" viewBox="0 0 200 200">
+                        <circle class="sales-circle-bg" cx="100" cy="100" r="80" />
+                        <circle class="sales-circle-progress sales-circle-products" cx="100" cy="100" r="80" :stroke-dasharray="circles.products" id="productsCircle"/>
+                    </svg>
+                    <div class="sales-value">
+                        <span class="sales-number" x-text="dashboard.products.total">{{ dashboard.products.total }}</span>
+                        <span class="sales-label">шт</span>
+                    </div>
+                </div>
+                <div class="sales-legend">
+                    <div class="sales-legend-item">
+                        <span class="sales-legend-dot sales-legend-dot--products"></span>
+                        <span>Всего: <strong x-text="dashboard.products.total">{{ dashboard.products.total }}</strong></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </section>
+
+<section class="dashboard-row-2">
+    <div class="dashboard-attendance-card">
+        <div class="sales-card-header">
+            <h4 x-text="titles.attendance">Посещения за выбранную дату</h4>
+            <span class="sales-info-icon" title="Посещаемость за выбранную дату">?</span>
+        </div>
+        <div class="sales-chart-wrapper">
+            <svg class="sales-circle-chart" viewBox="0 0 200 200">
+                <circle class="sales-circle-bg" cx="100" cy="100" r="80" />
+                <circle class="sales-circle-progress sales-circle-group" cx="100" cy="100" r="80" :stroke-dasharray="circles.attendanceGroup" id="attendanceGroupCircle"/>
+                <circle class="sales-circle-progress sales-circle-individual" cx="100" cy="100" r="80" :stroke-dasharray="circles.attendanceIndividual" id="attendanceIndividualCircle"/>
+            </svg>
+            <div class="attendance-value">
+                <span class="attendance-label-top">Посещаемость</span>
+                <span class="attendance-label-top">за день</span>
+                <span class="sales-number" x-text="dashboard.attendance.total">{{ dashboard.attendance.total }}</span>
+                <span class="sales-label">клиентов</span>
+            </div>
+        </div>
+        <div class="sales-legend">
+            <div class="sales-legend-item">
+                <span class="sales-legend-dot sales-legend-dot--group"></span>
+                <span>Групповые: <strong x-text="dashboard.attendance.group">{{ dashboard.attendance.group }}</strong></span>
+            </div>
+            <div class="sales-legend-item">
+                <span class="sales-legend-dot sales-legend-dot--individual"></span>
+                <span>Индивидуальные: <strong x-text="dashboard.attendance.individual">{{ dashboard.attendance.individual }}</strong></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-balance-card">
+        <h4 class="balance-title" x-text="titles.balance">Баланс за выбранную дату</h4>
+
+        <div class="balance-row">
+            <div class="balance-label-section">
+                <div class="balance-main-label">Доход за день</div>
+                <div class="balance-sub-labels">
+                    <span>Нал</span>
+                    <span>Безнал</span>
+                </div>
+            </div>
+            <div class="balance-content">
+                <div class="balance-items">
+                    <template x-for="item in dashboard.balance.income.items" :key="item.key">
+                        <div class="balance-item">
+                            <span class="balance-item-label" x-text="item.label"></span>
+                            <div class="balance-item-bar-wrapper">
+                                <div class="balance-item-bar">
+                                    <div class="balance-item-bar-fill" :style="`width: ${item.percent}%`"></div>
+                                </div>
+                                <span class="balance-item-amount" x-text="item.formatted + ' ₽'">{{ item.formatted }} ₽</span>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                <div class="balance-total-line">
+                    <span class="balance-total-label">Итого доход:</span>
+                    <span class="balance-total-amount" x-text="dashboard.balance.formatted_income_total + ' ₽'">{{ dashboard.balance.formatted_income_total }} ₽</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="balance-row">
+            <div class="balance-label-section">
+                <div class="balance-main-label">Расход</div>
+            </div>
+            <div class="balance-content">
+                <div class="balance-items">
+                    <template x-for="item in dashboard.balance.expense.items" :key="item.key">
+                        <div class="balance-item">
+                            <span class="balance-item-label" x-text="item.label"></span>
+                            <div class="balance-item-bar-wrapper">
+                                <div class="balance-item-bar">
+                                    <div class="balance-item-bar-fill balance-item-bar-expense" :style="`width: ${item.percent}%`"></div>
+                                </div>
+                                <span class="balance-item-amount" x-text="item.formatted + ' ₽'">{{ item.formatted }} ₽</span>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                <div class="balance-total-line">
+                    <span class="balance-total-label">Итого расход:</span>
+                    <span class="balance-total-amount balance-total-expense" x-text="dashboard.balance.formatted_expense_total + ' ₽'">{{ dashboard.balance.formatted_expense_total }} ₽</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="balance-row balance-row-final">
+            <div class="balance-label-section">
+                <div class="balance-main-label balance-final-label">Итого</div>
+            </div>
+            <div class="balance-content">
+                <div class="balance-final-amount" x-text="dashboard.balance.formatted_total + ' ₽'">{{ dashboard.balance.formatted_total }} ₽</div>
+            </div>
+        </div>
+    </div>
+    </section>
+
+<section class="dashboard-row-3">
+    <div class="dashboard-group-attendance-card">
+        <div class="section-card-header">
+            <h4 x-text="titles.groupAttendance">Посещения по группам за выбранную дату</h4>
+        </div>
+        <div class="attendance-list">
+            <template x-if="dashboard.groupAttendances.length === 0">
+                <div class="crm-empty">Нет занятий в группах за выбранную дату</div>
+            </template>
+            <template x-for="item in dashboard.groupAttendances" :key="item.group_name">
+                <div class="attendance-list-item">
+                    <span class="attendance-group-name" x-text="item.group_name"></span>
+                    <span class="attendance-stats" x-text="`${item.total} (${item.present}/${item.absent})`"></span>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <div class="dashboard-individual-attendance-card">
+        <div class="section-card-header">
+            <h4 x-text="titles.individualAttendance">Посещения по индивидуальным занятиям за выбранную дату</h4>
+            <span class="section-count" x-text="`(${dashboard.individualAttendances.length})`">({{ dashboard.individualAttendances|length }})</span>
+        </div>
+        <div class="attendance-list">
+            <template x-if="dashboard.individualAttendances.length === 0">
+                <div class="crm-empty">Нет индивидуальных занятий за выбранную дату</div>
+            </template>
+            <template x-for="item in dashboard.individualAttendances" :key="item.student_name + item.status">
+                <div class="attendance-list-item">
+                    <span class="attendance-group-name" x-text="item.student_name"></span>
+                    <span class="attendance-stats" x-text="`${item.present + item.absent} (${item.present}/${item.absent})`"></span>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <div class="dashboard-placeholder-card">
+        <div class="section-card-header">
+            <h4>Раздел</h4>
+        </div>
+        <div class="placeholder-content">
+            <p>Содержимое раздела</p>
+        </div>
+    </div>
+    </section>
+
+    {{ dashboard|json_script:"dashboard-data" }}
+</div>

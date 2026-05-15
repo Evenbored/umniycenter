@@ -1,0 +1,67 @@
+{% extends 'accounts/trainer_base.html' %}
+
+{% load static %}
+{% block title %}Ваш профиль{% endblock %}
+{% block links %}
+<link href="{% static 'css\homeworklist.css' %}" rel="stylesheet">
+<link href="{% static 'css\students.css' %}" rel="stylesheet">
+{% endblock links %}
+{% block content %}
+<div class="header justify-content-between align-items-start">
+    <div class="header justify-content-between d-flex">
+            <h2 class="student-list-title">Список домашнего задания</h2>
+            <button class="home-training-form-button home-training-form-button-add" > 
+                <a class="text-white" href="{% url 'homework:homework_create' %}">
+                    Добавить домашнее задание
+                </a>
+            </button>
+        </div>
+    <form method="post">
+        <div class="student-list-row">
+            <div class="student-list-form-group">
+                <label class="student-list-label" for="class">Класс</label>
+                <select name="course" class="student-list-select" placeholder="Курс" id="class" required="">
+                    <option value="" selected="">---------</option>
+                    <option value="1">Лепка и рисование - 52</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="student-list-row">
+            <div class="student-list-form-group">
+                <label class="student-list-label" for="status">Статус</label>
+                <select name="status" class="student-list-select" placeholder="Курс" id="status">
+                    <option value="True">Активный</option>
+
+                    <option value="False">Неактивный</option>
+
+                </select>
+            </div>
+            <div class="student-list-form-group">
+                <label class="student-list-label" for="sort">Сортировать</label>
+                <select class="student-list-select" id="sort">
+                    <option>Выберите критерий сортировки</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="student-list-form-group">
+            <label class="student-list-label" for="search">Поиск</label>
+            <div class="d-flex">
+            <input class="student-list-input" type="date" id="search" placeholder="Найти ученика">
+            <input class="student-list-input" type="date" id="search" placeholder="Найти ученика">
+            </div>
+        </div>
+
+        <div class="student-list-actions">
+            <button type="submit" class="student-list-btn">Поиск</button>
+        </div>
+
+
+        <div class="student-list-note">
+            В системе ещё не добавлены ученики
+        </div>
+    </form>
+
+</div>
+{% endblock content %}

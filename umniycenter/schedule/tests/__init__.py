@@ -1,0 +1,1 @@
+"""Schedule app tests package."""
