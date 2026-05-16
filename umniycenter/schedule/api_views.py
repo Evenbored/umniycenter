@@ -8,6 +8,7 @@ from rest_framework.response import Response
 
 from accounts.models import CustomUser, UserRole
 from courses.models import Courses
+from groups.models import SchoolGroups
 from accounts.permissions import IsAdminRole
 from accounts.serializers import UserListSerializer
 from students.models import StudentGroups
