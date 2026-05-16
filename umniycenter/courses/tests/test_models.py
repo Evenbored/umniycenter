@@ -4,7 +4,7 @@ Tests for Courses models.
 
 import pytest
 from django.test import TestCase
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from courses.models import Courses
 from tests.utils import CourseFactory
 
@@ -30,13 +30,18 @@ class CoursesModelTest(TestCase):
         """Test that course names must be unique."""
         Courses.objects.create(name="Mathematics")
         
-        with self.assertRaises(IntegrityError):
-            Courses.objects.create(name="Mathematics")
+        # PostgreSQL marks the current transaction as broken after an
+        # IntegrityError.  Keep the expected error inside an inner atomic block
+        # so the TestCase transaction remains usable for the following tests.
+        with transaction.atomic():
+            with self.assertRaises(IntegrityError):
+                Courses.objects.create(name="Mathematics")
     
     def test_course_name_required(self):
         """Test that course name is required."""
-        with self.assertRaises(IntegrityError):
-            Courses.objects.create(name=None)
+        with transaction.atomic():
+            with self.assertRaises(IntegrityError):
+                Courses.objects.create(name=None)
     
     def test_course_name_max_length(self):
         """Test course name max length validation."""

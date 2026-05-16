@@ -50,6 +50,14 @@ urlpatterns = [
 ]
 
 
+TEST_CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'accounts-view-tests',
+    }
+}
+
+
 @pytest.mark.integration
 @override_settings(TEMPLATES=TEST_TEMPLATES, ROOT_URLCONF=__name__)
 class RegisterViewTest(TestCase):
@@ -181,7 +189,7 @@ class LogoutViewTest(TestCase):
 
 
 @pytest.mark.integration
-@override_settings(ROOT_URLCONF=__name__)
+@override_settings(ROOT_URLCONF=__name__, CACHES=TEST_CACHES)
 class ProfileViewTest(TestCase):
     """Test cases for profile view."""
     

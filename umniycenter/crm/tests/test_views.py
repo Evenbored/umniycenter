@@ -4,11 +4,21 @@ Tests for CRM views.
 
 import pytest
 from django.test import TestCase, Client
+from django.test import override_settings
 from django.urls import reverse
 from tests.utils import AdminFactory, TeacherFactory, StudentFactory
 
 
+TEST_CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'crm-view-tests',
+    }
+}
+
+
 @pytest.mark.integration
+@override_settings(CACHES=TEST_CACHES)
 class CRMDashboardViewTest(TestCase):
     """Test cases for CRM dashboard view."""
     
@@ -128,6 +138,7 @@ class CRMParentsViewTest(TestCase):
 
 
 @pytest.mark.integration
+@override_settings(CACHES=TEST_CACHES)
 class CRMPaymentsViewTest(TestCase):
     """Test cases for CRM payments view."""
     

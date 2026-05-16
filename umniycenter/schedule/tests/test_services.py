@@ -134,6 +134,15 @@ class GetLessonEndTimeTest(TestCase):
 class GenerateScheduleForRangeTest(TestCase):
     """Test cases for generate_schedule_for_range() function."""
     
+    @staticmethod
+    def _next_date_for_weekday(weekday):
+        """Return the next future date matching the given weekday."""
+        today = date.today()
+        days_ahead = (weekday - today.weekday()) % 7
+        if days_ahead == 0:
+            days_ahead = 7
+        return today + timedelta(days=days_ahead)
+    
     def test_generate_schedule_from_templates(self):
         """Test generating schedule from templates."""
         group = SchoolGroupFactory()
@@ -188,17 +197,18 @@ class GenerateScheduleForRangeTest(TestCase):
     def test_generate_schedule_prevents_duplicates(self):
         """Test that duplicate schedules are not created."""
         group = SchoolGroupFactory()
+        template_weekday = 1  # Tuesday
         
         template = GroupScheduleTemplateFactory(
             group=group,
-            weekday=1,  # Tuesday
+            weekday=template_weekday,
             start_time=time(10, 0),
             lessons_count=1,
             is_active=True
         )
         
-        date_from = date(2026, 5, 6)  # Tuesday
-        date_to = date(2026, 5, 12)
+        date_from = self._next_date_for_weekday(template_weekday)
+        date_to = date_from + timedelta(days=6)
         
         # Generate first time
         schedules1 = generate_schedule_for_range(date_from, date_to, group.id)
@@ -242,17 +252,18 @@ class GenerateScheduleForRangeTest(TestCase):
     def test_generate_schedule_with_two_lesson_template(self):
         """Test generating schedule with 2-lesson template (90 minutes)."""
         group = SchoolGroupFactory()
+        template_weekday = 1  # Tuesday
         
         GroupScheduleTemplateFactory(
             group=group,
-            weekday=1,  # Tuesday
+            weekday=template_weekday,
             start_time=time(14, 0),
             lessons_count=2,  # 90 minutes
             is_active=True
         )
         
-        date_from = date(2026, 5, 6)  # Tuesday
-        date_to = date(2026, 5, 12)
+        date_from = self._next_date_for_weekday(template_weekday)
+        date_to = date_from + timedelta(days=6)
         
         schedules = generate_schedule_for_range(date_from, date_to, group.id)
         
@@ -313,12 +324,12 @@ class GenerateScheduleForRangeTest(TestCase):
             group=group, weekday=3, start_time=time(10, 0), lessons_count=1
         )
         
-        date_from = date(2026, 6, 1)
-        date_to = date(2026, 6, 30)
+        date_from = date.today() + timedelta(days=1)
+        date_to = date_from + timedelta(days=29)
         
         schedules = generate_schedule_for_range(date_from, date_to, group.id)
         
-        # June 2026 has ~8-9 Tuesdays and Thursdays combined
+        # Any 30-day future range has at least 8 Tuesdays and Thursdays combined.
         self.assertGreaterEqual(len(schedules), 8)
     
     def test_generate_schedule_with_no_templates(self):
