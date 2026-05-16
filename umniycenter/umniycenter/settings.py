@@ -196,3 +196,8 @@ YOOKASSA_WEBHOOK_URL = os.getenv('YOOKASSA_WEBHOOK_URL', 'http://localhost:8000/
 # Безопасность платежей
 PAYMENT_TIMEOUT_MINUTES = 30  # Время жизни платежа
 PAYMENT_DESCRIPTION_TEMPLATE = "Оплата тарифа '{tariff_name}' для {student_name}"
+
+
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:7b-instruct")
+OLLAMA_TIMEOUT = int(os.getenv("OLLAMA_TIMEOUT", "60"))
