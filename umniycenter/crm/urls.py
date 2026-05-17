@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import include, path
 
 from . import views
 
@@ -6,6 +6,7 @@ app_name = 'crm'
 
 urlpatterns = [
     path('crm/', views.dashboard, name='dashboard'),
+    path('crm/ai/', include('ai_assistant.urls', namespace='ai_assistant')),
     path('crm/requests/', views.requests_view, name='requests'),
     path('crm/requests/table/', views.requests_table_partial, name='requests_table'),
     path('crm/requests/<int:request_id>/drawer/', views.request_drawer_partial, name='request_drawer'),

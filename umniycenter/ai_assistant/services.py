@@ -1,7 +1,8 @@
 import requests
 from django.conf import settings
 
-class OllamClient:
+
+class OllamaClient:
     def __init__(self):
         self.base_url = settings.OLLAMA_BASE_URL.rstrip("/")
         self.model = settings.OLLAMA_MODEL
@@ -9,10 +10,10 @@ class OllamClient:
     
     def chat(self, messages, temperature=0.2):
         payload = {
-            "model" : self.model,
+            "model": self.model,
             "messages": messages,
             "stream": False,
-            "options":{
+            "options": {
                 "temperature": temperature,
             },
         }
@@ -26,4 +27,8 @@ class OllamClient:
         response.raise_for_status()
         
         data = response.json()
-        return data["message"]["content"]
+        return data.get("message", {}).get("content", "")
+
+
+# Backwards-compatible alias for the initially created class name.
+OllamClient = OllamaClient

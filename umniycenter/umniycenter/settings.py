@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'students',
     'courses',
     'crm',
+    'ai_assistant',
     'subscriptions',
     'communication',  # Система сообщений
 ]

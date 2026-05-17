@@ -268,10 +268,23 @@
 
     <div class="dashboard-placeholder-card">
         <div class="section-card-header">
-            <h4>Раздел</h4>
+            <h4>AI-помощник администратора</h4>
         </div>
         <div class="placeholder-content">
-            <p>Содержимое раздела</p>
+            <p>Сформируйте краткую сводку, приоритетные действия и риски на основе CRM-контекста за выбранную дату.</p>
+            <button
+                class="crm-btn crm-btn--primary"
+                type="button"
+                hx-post="{% url 'crm:ai_assistant:dashboard_insights' %}"
+                hx-target="#dashboardAiInsights"
+                hx-swap="innerHTML"
+                hx-indicator="#dashboardAiLoading"
+                :hx-vals="JSON.stringify({ date: dashboard.date })"
+            >Сформировать AI-сводку</button>
+            <div id="dashboardAiLoading" class="htmx-indicator crm-empty">AI анализирует CRM-контекст…</div>
+            <div id="dashboardAiInsights">
+                {% include 'ai_assistant/partials/dashboard_insights.html' %}
+            </div>
         </div>
     </div>
     </section>

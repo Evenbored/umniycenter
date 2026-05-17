@@ -1,0 +1,20 @@
+<div class="dashboard-ai-card">
+    <div class="section-card-header">
+        <h4>AI-инсайты</h4>
+    </div>
+
+    {% if ai_error %}
+        <div class="crm-form-alert crm-form-alert--error">{{ ai_error }}</div>
+    {% elif ai_insights %}
+        <div class="ai-insights-text">{{ ai_insights|linebreaks }}</div>
+    {% else %}
+        <div class="crm-empty">Нажмите кнопку, чтобы сформировать AI-сводку.</div>
+    {% endif %}
+
+    {% if ai_context %}
+        <details class="dashboard-ai-context">
+            <summary>Показать CRM-контекст</summary>
+            <pre>{{ ai_context }}</pre>
+        </details>
+    {% endif %}
+</div>

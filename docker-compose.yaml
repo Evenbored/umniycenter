@@ -20,6 +20,8 @@ services:
       - db
       - redis
     restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
   nginx:
     image: nginx:alpine
     container_name: nginx_proxy
