@@ -1,11 +1,12 @@
 import json
+import logging
 from datetime import timedelta
 from datetime import datetime
 from functools import wraps
 
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import F, Q, Sum
 from django.http import HttpResponse
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, render
@@ -22,13 +23,16 @@ from main.models import ParticipantRequest
 from students.api_views import create_student_with_parent, generate_parent_username, validate_optional_email, validate_optional_phone, validate_source
 from students.models import StudentGroups
 from students.serializers import StudentUpdateSerializer
-from subscriptions.models import Payment, Tariff
+from subscriptions.models import Payment, Subscription, Tariff
 from subscriptions.payment_service import PaymentService
 from subscriptions.serializers import PaymentSerializer
 from schedule.models import Schedule
 from schedule.models import GroupScheduleTemplate
 from communication.models import Message, Ticket, TicketStatus
 from .api_views import build_dashboard_payload, parse_dashboard_date
+
+
+logger = logging.getLogger(__name__)
 
 
 def crm_toast(message, title="Готово", toast_type="success"):
@@ -118,6 +122,12 @@ def payments_view(request):
 
 @login_required
 @admin_required
+def subscriptions_view(request):
+    return render(request, "crm/subscriptions.html", get_subscriptions_context(request))
+
+
+@login_required
+@admin_required
 def groups_view(request):
     return render(request, "crm/groups.html", get_groups_context(request))
 
@@ -172,6 +182,11 @@ def get_schedule_context(request, selected_lesson=None, error=None):
         "groups": SchoolGroups.objects.select_related("course", "teacher").filter(is_active=True).order_by("course__name", "number"),
         "selected_lesson": selected_lesson,
         "form_error": error,
+        "generate_form": {
+            "date_from": request.POST.get("date_from") or request.GET.get("date_from") or "",
+            "date_to": request.POST.get("date_to") or request.GET.get("date_to") or "",
+            "group_id": request.POST.get("group_id") or request.GET.get("group_id") or "",
+        },
     }
 
 
@@ -445,15 +460,16 @@ def schedule_generate_partial(request):
         if date_to < date_from:
             raise ValueError("Дата окончания не может быть раньше даты начала")
         created = generate_schedule_for_range(date_from, date_to, group_id=group_id)
+
+        context = get_schedule_context(request)
+        response = HttpResponse(
+            render_to_string("crm/partials/schedule_generate_drawer.html", {**context, "generate_success": f"Создано занятий: {len(created)}"}, request=request)
+            + render_to_string("crm/partials/schedule_lessons.html", {**context, "lessons_oob": True}, request=request)
+        )
+        response["HX-Trigger"] = hx_trigger(toast=crm_toast(f"Создано занятий: {len(created)}"))
+        return response
     except Exception as exc:
         return render(request, "crm/partials/schedule_generate_drawer.html", {**get_schedule_context(request), "form_error": str(exc)}, status=400)
-
-    response = HttpResponse(
-        render_to_string("crm/partials/schedule_generate_drawer.html", {**get_schedule_context(request), "generate_success": f"Создано занятий: {len(created)}"}, request=request)
-        + render_to_string("crm/partials/schedule_lessons.html", {**get_schedule_context(request), "lessons_oob": True}, request=request)
-    )
-    response["HX-Trigger"] = hx_trigger(toast=crm_toast(f"Создано занятий: {len(created)}"))
-    return response
 
 
 @login_required
@@ -516,7 +532,8 @@ def schedule_lesson_create_partial(request):
 @admin_required
 @require_http_methods(["POST"])
 def schedule_attendance_mark_partial(request, lesson_id, student_id):
-    from subscriptions.models import LessonAttendance, Subscription, Tariff
+    from subscriptions.models import LessonAttendance
+    from subscriptions.services import SubscriptionService
     lesson = get_object_or_404(Schedule.objects.select_related("group", "group__course", "student", "course"), id=lesson_id)
     student = get_object_or_404(CustomUser, id=student_id, role=UserRole.STUDENT)
     try:
@@ -527,13 +544,7 @@ def schedule_attendance_mark_partial(request, lesson_id, student_id):
         subscription = None
         lesson_deducted = False
         if status_value == "present" and not lesson.is_single:
-            subscription_type = Tariff.SUBSCRIPTION_TYPE_GROUP if lesson.group_id else Tariff.SUBSCRIPTION_TYPE_INDIVIDUAL
-            subscription = Subscription.objects.filter(student=student, status="active", tariff__course=lesson.group.course if lesson.group else lesson.course, tariff__subscription_type=subscription_type, end_date__gte=timezone.now().date()).order_by("end_date").first()
-            if not subscription:
-                raise ValueError("У ученика нет активной подписки на этот курс")
-            if subscription.lessons_remaining < lessons_count:
-                raise ValueError(f"Недостаточно занятий. Осталось: {subscription.lessons_remaining}, требуется: {lessons_count}")
-            subscription.deduct_lessons(lessons_count)
+            subscription, lessons_count = SubscriptionService.deduct_for_lesson(student, lesson, lessons_count, marked_by=request.user)
             lesson_deducted = True
         LessonAttendance.objects.create(schedule=lesson, student=student, status=status_value, lessons_count=lessons_count, subscription=subscription, lesson_deducted=lesson_deducted, marked_by=request.user)
         student.update_active_status()
@@ -547,11 +558,12 @@ def schedule_attendance_mark_partial(request, lesson_id, student_id):
 @require_http_methods(["POST"])
 def schedule_attendance_cancel_partial(request, attendance_id):
     from subscriptions.models import LessonAttendance
+    from subscriptions.services import SubscriptionService
     attendance = get_object_or_404(LessonAttendance.objects.select_related("schedule", "subscription", "student"), id=attendance_id)
     lesson = attendance.schedule
     student = attendance.student
     if attendance.lesson_deducted and attendance.subscription:
-        attendance.subscription.refund_lessons(attendance.lessons_count)
+        SubscriptionService.refund_for_attendance(attendance, created_by=request.user)
     attendance.delete()
     student.update_active_status()
     return render(request, "crm/partials/schedule_attendance.html", get_lesson_attendance_context(request, lesson, success="Отметка отменена"))
@@ -674,6 +686,8 @@ def get_student_for_drawer(student_id):
             get_student_membership_prefetch(),
             "student_profile__parents__user",
             "subscriptions__tariff__course",
+            "subscriptions__group",
+            "subscriptions__logs",
         ),
         id=student_id,
         role=UserRole.STUDENT,
@@ -701,7 +715,7 @@ def get_student_parents(student):
 
 
 def get_student_subscriptions(student):
-    return student.subscriptions.select_related("tariff", "tariff__course").order_by("-created_at")
+    return student.subscriptions.select_related("tariff", "tariff__course", "group").prefetch_related("logs").order_by("-created_at")
 
 
 def build_student_form_values(student=None, data=None):
@@ -1112,6 +1126,145 @@ def get_payments_context(request, payment=None):
     }
 
 
+def get_subscriptions_queryset(request):
+    subscriptions = Subscription.objects.select_related(
+        "student",
+        "parent",
+        "tariff",
+        "tariff__course",
+        "group",
+    ).prefetch_related("payments", "logs")
+
+    search = (request.GET.get("search") or "").strip()
+    status_filter = request.GET.get("status") or ""
+    subscription_type = request.GET.get("subscription_type") or ""
+    course_id = request.GET.get("course") or ""
+    risk = request.GET.get("risk") or ""
+    sort = request.GET.get("sort") or "date_new"
+    today = timezone.now().date()
+
+    if search:
+        subscriptions = subscriptions.filter(
+            Q(student__first_name__icontains=search)
+            | Q(student__last_name__icontains=search)
+            | Q(student__username__icontains=search)
+            | Q(parent__first_name__icontains=search)
+            | Q(parent__last_name__icontains=search)
+            | Q(parent__phone__icontains=search)
+            | Q(parent__email__icontains=search)
+            | Q(tariff__name__icontains=search)
+            | Q(tariff__course__name__icontains=search)
+            | Q(group__number__icontains=search)
+        )
+    if status_filter:
+        subscriptions = subscriptions.filter(status=status_filter)
+    if subscription_type:
+        subscriptions = subscriptions.filter(tariff__subscription_type=subscription_type)
+    if course_id:
+        subscriptions = subscriptions.filter(tariff__course_id=course_id)
+
+    if risk == "ending_lessons":
+        subscriptions = subscriptions.filter(status="active", lessons_used__gte=F("lessons_total") - 2)
+    elif risk == "ending_date":
+        subscriptions = subscriptions.filter(status="active", end_date__gte=today, end_date__lte=today + timedelta(days=7))
+    elif risk == "expired_date":
+        subscriptions = subscriptions.filter(end_date__lt=today).exclude(status__in=["canceled", "frozen"])
+    elif risk == "pending_payment":
+        subscriptions = subscriptions.filter(status="pending")
+    elif risk == "negative":
+        subscriptions = subscriptions.filter(lessons_used__gt=F("lessons_total"))
+
+    if sort == "date_old":
+        subscriptions = subscriptions.order_by("created_at")
+    elif sort == "end_soon":
+        subscriptions = subscriptions.order_by("end_date", "lessons_total", "-created_at")
+    elif sort == "lessons_low":
+        subscriptions = subscriptions.order_by("lessons_total", "-lessons_used", "end_date")
+    elif sort == "student_az":
+        subscriptions = subscriptions.order_by("student__last_name", "student__first_name", "-created_at")
+    else:
+        subscriptions = subscriptions.order_by("-created_at")
+
+    return subscriptions.distinct()
+
+
+def prepare_subscription_for_crm(subscription):
+    today = timezone.now().date()
+    lessons_remaining = subscription.lessons_remaining
+    total = subscription.lessons_total or 0
+    used = subscription.lessons_used or 0
+    subscription.lessons_percent = min(max(round((used / total) * 100), 0), 100) if total else 0
+    subscription.days_remaining = (subscription.end_date - today).days if subscription.end_date else None
+    subscription.total_paid = subscription.payments.filter(status="completed").aggregate(total=Sum("amount"))["total"] or 0
+    subscription.pending_payments_count = subscription.payments.filter(status="pending").count()
+    subscription.last_payment = subscription.payments.order_by("-created_at").first()
+
+    risk_labels = []
+    if subscription.status == "pending":
+        risk_labels.append("Ожидает оплаты")
+    if subscription.status == "active" and lessons_remaining <= 2:
+        risk_labels.append("Мало занятий")
+    if subscription.status == "active" and subscription.end_date and 0 <= subscription.days_remaining <= 7:
+        risk_labels.append("Скоро истекает")
+    if subscription.end_date and subscription.end_date < today and subscription.status not in ["canceled", "frozen"]:
+        risk_labels.append("Срок истек")
+    if lessons_remaining < 0:
+        risk_labels.append("В минусе")
+    if subscription.is_frozen:
+        risk_labels.append("Заморожен")
+    subscription.risk_labels = risk_labels
+
+    if subscription.is_frozen:
+        subscription.crm_status_label = "Заморожен"
+        subscription.crm_status_class = "archive"
+    elif subscription.status == "active" and subscription.is_valid:
+        subscription.crm_status_label = "Активен"
+        subscription.crm_status_class = "active"
+    elif subscription.status == "pending":
+        subscription.crm_status_label = "Ожидает оплаты"
+        subscription.crm_status_class = "archive"
+    else:
+        subscription.crm_status_label = subscription.get_status_display()
+        subscription.crm_status_class = "archive"
+    return subscription
+
+
+def get_subscriptions_context(request, subscription=None, error=None):
+    subscriptions = [prepare_subscription_for_crm(item) for item in get_subscriptions_queryset(request)]
+    all_subscriptions = Subscription.objects.all()
+    today = timezone.now().date()
+
+    return {
+        "subscriptions": subscriptions,
+        "subscriptions_count": len(subscriptions),
+        "active_count": all_subscriptions.filter(status="active", end_date__gte=today).count(),
+        "pending_count": all_subscriptions.filter(status="pending").count(),
+        "ending_lessons_count": all_subscriptions.filter(status="active", lessons_used__gte=F("lessons_total") - 2).count(),
+        "ending_date_count": all_subscriptions.filter(status="active", end_date__gte=today, end_date__lte=today + timedelta(days=7)).count(),
+        "expired_count": all_subscriptions.filter(end_date__lt=today).exclude(status__in=["canceled", "frozen"]).count(),
+        "courses": Courses.objects.all().order_by("name"),
+        "status_choices": Subscription.STATUS_CHOICES,
+        "subscription_type_choices": Tariff.SUBSCRIPTION_TYPE_CHOICES,
+        "selected_subscription": prepare_subscription_for_crm(subscription) if subscription else None,
+        "subscription_logs": subscription.logs.select_related("created_by", "related_lesson").order_by("-created_at")[:20] if subscription else [],
+        "subscription_payments": subscription.payments.select_related("parent").order_by("-created_at") if subscription else [],
+        "form_error": error,
+    }
+
+
+def get_subscription_for_drawer(subscription_id):
+    return get_object_or_404(
+        Subscription.objects.select_related(
+            "student",
+            "parent",
+            "tariff",
+            "tariff__course",
+            "group",
+        ).prefetch_related("payments", "logs"),
+        id=subscription_id,
+    )
+
+
 def get_payment_for_drawer(payment_id):
     return get_object_or_404(
         Payment.objects.select_related(
@@ -1405,13 +1558,30 @@ def student_save_partial(request, student_id=None):
 @admin_required
 @require_http_methods(["POST"])
 def student_add_group_partial(request, student_id):
+    from subscriptions.models import Subscription, Tariff, SubscriptionLog
     student = get_student_for_drawer(student_id)
     group_id = request.POST.get("group_id")
+    force_add = request.POST.get("force_add") == "on"
     try:
         if not group_id:
             raise ValueError("Выберите группу")
         group = SchoolGroups.objects.get(id=group_id)
+        subscription = Subscription.objects.filter(
+            student=student,
+            status="active",
+            tariff__course=group.course,
+            tariff__subscription_type=Tariff.SUBSCRIPTION_TYPE_GROUP,
+            end_date__gte=timezone.now().date(),
+        ).filter(Q(group=group) | Q(group__isnull=True)).order_by("end_date", "created_at").first()
+        if not subscription and not force_add:
+            raise ValueError("У ученика нет активного группового абонемента на курс этой группы. Если это пробное/исключение — включите ручное добавление.")
         StudentGroups.objects.get_or_create(student=student, group=group)
+        if subscription and not subscription.group_id:
+            subscription.group = group
+            subscription.save(update_fields=["group", "updated_at"])
+            SubscriptionLog.log(subscription, 'group_assigned', comment=f'Группа #{group.id}', created_by=request.user)
+        elif subscription:
+            SubscriptionLog.log(subscription, 'group_assigned', comment=f'Группа #{group.id}', created_by=request.user)
     except Exception as exc:
         return render(request, "crm/partials/student_drawer.html", build_student_drawer_context(request, student=student, error=str(exc)), status=400)
 
@@ -1466,6 +1636,61 @@ def student_payments_partial(request, student_id):
 @login_required
 @admin_required
 @require_http_methods(["POST"])
+def student_subscription_freeze_partial(request, student_id, subscription_id):
+    from datetime import datetime
+    from subscriptions.models import Subscription
+
+    student = get_student_for_drawer(student_id)
+    try:
+        subscription = Subscription.objects.get(id=subscription_id, student=student)
+        until_raw = request.POST.get("frozen_until")
+        if not until_raw:
+            raise ValueError("Укажите дату окончания заморозки")
+        until_date = datetime.strptime(until_raw, "%Y-%m-%d").date()
+        subscription.freeze(until_date, reason=(request.POST.get("freeze_reason") or "").strip(), frozen_by=request.user)
+    except Exception as exc:
+        return render(request, "crm/partials/student_drawer.html", build_student_drawer_context(request, student=student, error=str(exc)), status=400)
+
+    student = get_student_for_drawer(student_id)
+    drawer_html = render_to_string("crm/partials/student_drawer.html", build_student_drawer_context(request, student=student), request=request)
+    return render_oob_response(
+        "studentsTableHost",
+        "crm/partials/students_table.html",
+        get_students_context(request),
+        request,
+        drawer_html=drawer_html,
+        triggers=hx_trigger("crm:refresh-stats", toast=crm_toast("Абонемент заморожен")),
+    )
+
+
+@login_required
+@admin_required
+@require_http_methods(["POST"])
+def student_subscription_unfreeze_partial(request, student_id, subscription_id):
+    from subscriptions.models import Subscription
+
+    student = get_student_for_drawer(student_id)
+    try:
+        subscription = Subscription.objects.get(id=subscription_id, student=student)
+        subscription.unfreeze(created_by=request.user)
+    except Exception as exc:
+        return render(request, "crm/partials/student_drawer.html", build_student_drawer_context(request, student=student, error=str(exc)), status=400)
+
+    student = get_student_for_drawer(student_id)
+    drawer_html = render_to_string("crm/partials/student_drawer.html", build_student_drawer_context(request, student=student), request=request)
+    return render_oob_response(
+        "studentsTableHost",
+        "crm/partials/students_table.html",
+        get_students_context(request),
+        request,
+        drawer_html=drawer_html,
+        triggers=hx_trigger("crm:refresh-stats", toast=crm_toast("Абонемент разморожен")),
+    )
+
+
+@login_required
+@admin_required
+@require_http_methods(["POST"])
 def student_confirm_payment_partial(request, student_id, payment_id):
     student = get_student_for_drawer(student_id)
     try:
@@ -1510,7 +1735,7 @@ def student_cancel_payment_partial(request, student_id, payment_id):
 def student_buy_tariff_partial(request, student_id):
     from datetime import timedelta
     from django.utils import timezone
-    from subscriptions.models import Subscription
+    from subscriptions.models import Subscription, SubscriptionLog
 
     student = get_student_for_drawer(student_id)
     try:
@@ -1545,12 +1770,18 @@ def student_buy_tariff_partial(request, student_id):
                 student=student,
                 parent=parent,
                 tariff=tariff,
+                group=group if tariff.subscription_type == Tariff.SUBSCRIPTION_TYPE_GROUP else None,
                 lessons_total=tariff.lessons_count,
                 lessons_used=0,
                 start_date=timezone.now().date(),
                 end_date=timezone.now().date() + timedelta(days=tariff.validity_days),
                 status="pending",
+                allow_negative_lessons=tariff.allow_negative_lessons,
+                negative_limit=tariff.default_negative_limit,
+                allow_group_to_individual=tariff.allow_group_to_individual,
+                group_to_individual_ratio=tariff.group_to_individual_ratio,
             )
+            SubscriptionLog.log(subscription, 'created', comment='Оформление тарифа из CRM', created_by=request.user)
             payment_result = PaymentService.create_payment(subscription_id=subscription.id, parent_id=parent.id, payment_method=payment_method)
             payment = Payment.objects.get(id=payment_result["payment_id"])
             if group:
@@ -1860,6 +2091,89 @@ def request_create_student_partial(request, request_id):
             toast=crm_toast(toast_text, title="Ученик создан"),
         ),
     )
+
+
+@login_required
+@admin_required
+def subscriptions_table_partial(request):
+    return render(request, "crm/partials/subscriptions_table.html", get_subscriptions_context(request))
+
+
+@login_required
+@admin_required
+def subscription_drawer_partial(request, subscription_id):
+    subscription = get_subscription_for_drawer(subscription_id)
+    return render(request, "crm/partials/subscription_drawer.html", get_subscriptions_context(request, subscription=subscription))
+
+
+def subscription_oob_response(request, subscription, toast_message):
+    subscription = get_subscription_for_drawer(subscription.id)
+    drawer_html = render_to_string(
+        "crm/partials/subscription_drawer.html",
+        get_subscriptions_context(request, subscription=subscription),
+        request=request,
+    )
+    return render_oob_response(
+        "subscriptionsTableHost",
+        "crm/partials/subscriptions_table.html",
+        get_subscriptions_context(request),
+        request,
+        drawer_html=drawer_html,
+        triggers=hx_trigger("crm:refresh-stats", toast=crm_toast(toast_message)),
+    )
+
+
+@login_required
+@admin_required
+@require_http_methods(["POST"])
+def subscription_freeze_partial(request, subscription_id):
+    try:
+        subscription = get_subscription_for_drawer(subscription_id)
+        until_raw = request.POST.get("frozen_until")
+        if not until_raw:
+            raise ValueError("Укажите дату окончания заморозки")
+        until_date = datetime.strptime(until_raw, "%Y-%m-%d").date()
+        subscription.freeze(until_date, reason=(request.POST.get("freeze_reason") or "").strip(), frozen_by=request.user)
+    except Exception as exc:
+        subscription = get_subscription_for_drawer(subscription_id)
+        return render(request, "crm/partials/subscription_drawer.html", get_subscriptions_context(request, subscription=subscription, error=str(exc)), status=400)
+    return subscription_oob_response(request, subscription, "Абонемент заморожен")
+
+
+@login_required
+@admin_required
+@require_http_methods(["POST"])
+def subscription_unfreeze_partial(request, subscription_id):
+    try:
+        subscription = get_subscription_for_drawer(subscription_id)
+        subscription.unfreeze(created_by=request.user)
+    except Exception as exc:
+        subscription = get_subscription_for_drawer(subscription_id)
+        return render(request, "crm/partials/subscription_drawer.html", get_subscriptions_context(request, subscription=subscription, error=str(exc)), status=400)
+    return subscription_oob_response(request, subscription, "Абонемент разморожен")
+
+
+@login_required
+@admin_required
+@require_http_methods(["POST"])
+def subscription_close_partial(request, subscription_id):
+    try:
+        subscription = get_subscription_for_drawer(subscription_id)
+        close_action = request.POST.get("close_action") or "canceled"
+        reason = (request.POST.get("close_reason") or "").strip()
+        if close_action not in ["canceled", "completed"]:
+            raise ValueError("Выберите корректное действие")
+        if not reason:
+            raise ValueError("Укажите причину закрытия абонемента")
+        subscription.close(status=close_action, reason=reason, closed_by=request.user)
+        subscription.student.update_active_status()
+        subscription.parent.update_active_status()
+    except Exception as exc:
+        subscription = get_subscription_for_drawer(subscription_id)
+        return render(request, "crm/partials/subscription_drawer.html", get_subscriptions_context(request, subscription=subscription, error=str(exc)), status=400)
+
+    message = "Абонемент отменен" if close_action == "canceled" else "Абонемент завершен вручную"
+    return subscription_oob_response(request, subscription, message)
 
 
 @login_required

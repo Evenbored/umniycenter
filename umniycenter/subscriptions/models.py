@@ -2,9 +2,11 @@ from django.db import models
 from django.db.models import F
 from django.utils import timezone
 from decimal import Decimal
+from datetime import timedelta
 
 from accounts.models import CustomUser, UserRole
 from courses.models import Courses
+from groups.models import SchoolGroups
 from schedule.models import Schedule
 
 
@@ -41,6 +43,22 @@ class Tariff(models.Model):
     )
     is_active = models.BooleanField(default=True, verbose_name="Доступен для покупки")
     is_trial = models.BooleanField(default=False, verbose_name="Пробный тариф")
+    allow_negative_lessons = models.BooleanField(
+        default=False,
+        verbose_name="Разрешить занятия в минус"
+    )
+    default_negative_limit = models.PositiveSmallIntegerField(
+        default=0,
+        verbose_name="Лимит занятий в минус"
+    )
+    allow_group_to_individual = models.BooleanField(
+        default=False,
+        verbose_name="Разрешить использовать групповой абонемент для индивидуальных занятий"
+    )
+    group_to_individual_ratio = models.PositiveSmallIntegerField(
+        default=2,
+        verbose_name="Сколько групповых занятий списывать за 1 индивидуальное"
+    )
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -64,6 +82,7 @@ class Subscription(models.Model):
         ('exhausted', 'Исчерпан'),
         ('frozen', 'Заморожен'),
         ('canceled', 'Отменен'),
+        ('completed', 'Завершен вручную'),
     ]
     
     student = models.ForeignKey(
@@ -83,6 +102,14 @@ class Subscription(models.Model):
         on_delete=models.PROTECT,
         related_name='subscriptions',
         verbose_name="Тариф"
+    )
+    group = models.ForeignKey(
+        SchoolGroups,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='subscriptions',
+        verbose_name="Группа"
     )
     
     # Параметры на момент покупки
@@ -104,6 +131,24 @@ class Subscription(models.Model):
     # Заморозка (на будущее)
     frozen_at = models.DateTimeField(null=True, blank=True, verbose_name="Дата заморозки")
     frozen_days = models.IntegerField(default=0, verbose_name="Дней заморожен")
+    frozen_until = models.DateField(null=True, blank=True, verbose_name="Заморожен до")
+    freeze_reason = models.CharField(max_length=255, blank=True, verbose_name="Причина заморозки")
+
+    closed_at = models.DateTimeField(null=True, blank=True, verbose_name="Дата закрытия")
+    closed_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='closed_subscriptions',
+        verbose_name="Кто закрыл"
+    )
+    close_reason = models.TextField(blank=True, verbose_name="Причина закрытия")
+
+    allow_negative_lessons = models.BooleanField(default=False, verbose_name="Разрешить занятия в минус")
+    negative_limit = models.PositiveSmallIntegerField(default=0, verbose_name="Лимит занятий в минус")
+    allow_group_to_individual = models.BooleanField(default=False, verbose_name="Можно тратить на индивидуальные")
+    group_to_individual_ratio = models.PositiveSmallIntegerField(default=2, verbose_name="Коэффициент индивидуального занятия")
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -120,6 +165,16 @@ class Subscription(models.Model):
     def lessons_remaining(self):
         """Осталось занятий"""
         return self.lessons_total - self.lessons_used
+
+    @property
+    def negative_used(self):
+        return abs(self.lessons_remaining) if self.lessons_remaining < 0 else 0
+
+    @property
+    def negative_available(self):
+        if not self.allow_negative_lessons:
+            return 0
+        return max(self.negative_limit - self.negative_used, 0)
     
     @property
     def is_valid(self):
@@ -127,21 +182,81 @@ class Subscription(models.Model):
         return (
             self.status == 'active' and
             self.lessons_remaining > 0 and
-            self.end_date >= timezone.now().date()
+            self.end_date >= timezone.now().date() and
+            not self.is_frozen
         )
+
+    @property
+    def is_frozen(self):
+        if self.status == 'frozen':
+            return True
+        return bool(self.frozen_until and self.frozen_until >= timezone.now().date())
+
+    def can_deduct_lessons(self, count=1):
+        if self.status != 'active' or self.is_frozen or self.end_date < timezone.now().date():
+            return False
+        return self.lessons_remaining - count >= -self.negative_limit if self.allow_negative_lessons else self.lessons_remaining >= count
     
     def deduct_lessons(self, count=1):
         """Списать занятия"""
-        if self.lessons_remaining >= count:
+        if self.can_deduct_lessons(count):
             self.lessons_used += count
             
             # Если закончились занятия, меняем статус
-            if self.lessons_remaining == 0:
+            if self.lessons_remaining == 0 and not self.allow_negative_lessons:
                 self.status = 'exhausted'
             
             self.save()
             return True
         return False
+
+    def freeze(self, until_date, reason='', frozen_by=None):
+        if self.status not in ['active', 'frozen']:
+            raise ValueError("Заморозить можно только активный абонемент")
+        if until_date < timezone.now().date():
+            raise ValueError("Дата окончания заморозки не может быть в прошлом")
+
+        today = timezone.now().date()
+        days = (until_date - today).days + 1
+        self.status = 'frozen'
+        self.frozen_at = timezone.now()
+        self.frozen_until = until_date
+        self.freeze_reason = reason
+        self.frozen_days += days
+        self.end_date = self.end_date + timedelta(days=days)
+        self.save()
+        SubscriptionFreeze.objects.create(subscription=self, start_date=today, end_date=until_date, days=days, reason=reason, created_by=frozen_by)
+        SubscriptionLog.log(self, 'freeze', lessons_delta=0, comment=reason, created_by=frozen_by)
+
+    def unfreeze(self, created_by=None):
+        if self.status != 'frozen':
+            raise ValueError("Абонемент не заморожен")
+        self.status = 'active' if self.lessons_remaining > 0 else 'exhausted'
+        self.frozen_until = None
+        self.freeze_reason = ''
+        self.save()
+        SubscriptionLog.log(self, 'unfreeze', created_by=created_by)
+
+    def close(self, status='canceled', reason='', closed_by=None):
+        if status not in ['canceled', 'completed']:
+            raise ValueError("Недопустимый статус закрытия")
+        if self.status in ['canceled', 'completed']:
+            raise ValueError("Абонемент уже закрыт")
+
+        self.status = status
+        self.closed_at = timezone.now()
+        self.closed_by = closed_by
+        self.close_reason = reason
+        if status == 'completed' and self.lessons_remaining > 0:
+            self.lessons_used = self.lessons_total
+        self.save()
+        SubscriptionLog.log(
+            self,
+            'canceled' if status == 'canceled' else 'completed',
+            lessons_delta=0,
+            comment=reason,
+            created_by=closed_by,
+        )
     
     def refund_lessons(self, count=1):
         """Вернуть занятия (при отмене посещения)"""
@@ -239,6 +354,62 @@ class Payment(models.Model):
     
     def __str__(self):
         return f"Платеж #{self.id} - {self.parent.get_full_name()} - {self.amount} руб. ({self.get_status_display()})"
+
+
+class SubscriptionFreeze(models.Model):
+    subscription = models.ForeignKey(Subscription, on_delete=models.CASCADE, related_name='freezes', verbose_name="Абонемент")
+    start_date = models.DateField(verbose_name="Дата начала")
+    end_date = models.DateField(verbose_name="Дата окончания")
+    days = models.PositiveSmallIntegerField(verbose_name="Количество дней")
+    reason = models.CharField(max_length=255, blank=True, verbose_name="Причина")
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_subscription_freezes', verbose_name="Кто создал")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Заморозка абонемента"
+        verbose_name_plural = "Заморозки абонементов"
+        ordering = ['-created_at']
+
+
+class SubscriptionLog(models.Model):
+    ACTION_CHOICES = [
+        ('created', 'Создан'),
+        ('activated', 'Активирован'),
+        ('deduct', 'Списаны занятия'),
+        ('refund', 'Возвращены занятия'),
+        ('freeze', 'Заморожен'),
+        ('unfreeze', 'Разморожен'),
+        ('canceled', 'Отменен'),
+        ('completed', 'Завершен вручную'),
+        ('group_assigned', 'Привязан к группе'),
+        ('manual_group_add', 'Ручное добавление в группу'),
+        ('negative_limit_changed', 'Изменен лимит минуса'),
+    ]
+    subscription = models.ForeignKey(Subscription, on_delete=models.CASCADE, related_name='logs', verbose_name="Абонемент")
+    action = models.CharField(max_length=40, choices=ACTION_CHOICES, verbose_name="Действие")
+    lessons_delta = models.IntegerField(default=0, verbose_name="Изменение занятий")
+    balance_after = models.IntegerField(default=0, verbose_name="Остаток после операции")
+    related_lesson = models.ForeignKey(Schedule, on_delete=models.SET_NULL, null=True, blank=True, related_name='subscription_logs', verbose_name="Занятие")
+    comment = models.TextField(blank=True, verbose_name="Комментарий")
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='subscription_logs', verbose_name="Кто выполнил")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Операция по абонементу"
+        verbose_name_plural = "Операции по абонементам"
+        ordering = ['-created_at']
+
+    @classmethod
+    def log(cls, subscription, action, lessons_delta=0, related_lesson=None, comment='', created_by=None):
+        return cls.objects.create(
+            subscription=subscription,
+            action=action,
+            lessons_delta=lessons_delta,
+            balance_after=subscription.lessons_remaining,
+            related_lesson=related_lesson,
+            comment=comment,
+            created_by=created_by,
+        )
 
 
 class LessonAttendance(models.Model):

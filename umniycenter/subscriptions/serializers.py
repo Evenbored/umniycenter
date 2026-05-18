@@ -14,6 +14,7 @@ class TariffSerializer(serializers.ModelSerializer):
             'id', 'name', 'course', 'course_name',
             'lessons_count', 'validity_days', 'price',
             'description', 'subscription_type', 'subscription_type_display', 'is_active', 'is_trial',
+            'allow_negative_lessons', 'default_negative_limit', 'allow_group_to_individual', 'group_to_individual_ratio',
             'created_at', 'updated_at'
         ]
 
@@ -27,16 +28,20 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     subscription_type_display = serializers.CharField(source='tariff.get_subscription_type_display', read_only=True)
     lessons_remaining = serializers.IntegerField(read_only=True)
     is_valid = serializers.BooleanField(read_only=True)
+    group_name = serializers.CharField(source='group.number', read_only=True)
     
     class Meta:
         model = Subscription
         fields = [
             'id', 'student', 'student_name', 'parent', 'parent_name',
-            'tariff', 'tariff_name', 'course_name',
+            'tariff', 'tariff_name', 'course_name', 'group', 'group_name',
             'subscription_type', 'subscription_type_display',
             'lessons_total', 'lessons_used', 'lessons_remaining',
             'start_date', 'end_date', 'status', 'is_valid',
-            'frozen_at', 'frozen_days',
+            'frozen_at', 'frozen_days', 'frozen_until', 'freeze_reason',
+            'closed_at', 'closed_by', 'close_reason',
+            'allow_negative_lessons', 'negative_limit', 'negative_used', 'negative_available',
+            'allow_group_to_individual', 'group_to_individual_ratio',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['lessons_used', 'status', 'created_at', 'updated_at']

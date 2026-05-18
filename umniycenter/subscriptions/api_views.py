@@ -189,7 +189,11 @@ def create_subscription(request):
             lessons_used=0,
             start_date=timezone.now().date(),
             end_date=timezone.now().date() + timedelta(days=tariff.validity_days),
-            status='pending'  # ❗ Подписка неактивна до оплаты
+            status='pending',  # ❗ Подписка неактивна до оплаты
+            allow_negative_lessons=tariff.allow_negative_lessons,
+            negative_limit=tariff.default_negative_limit,
+            allow_group_to_individual=tariff.allow_group_to_individual,
+            group_to_individual_ratio=tariff.group_to_individual_ratio,
         )
         
         # Создаем платеж
@@ -308,11 +312,16 @@ def quick_create_subscription(request):
                 student=student,
                 parent=parent,
                 tariff=tariff,
+                group=group if tariff.subscription_type == Tariff.SUBSCRIPTION_TYPE_GROUP else None,
                 lessons_total=tariff.lessons_count,
                 lessons_used=0,
                 start_date=timezone.now().date(),
                 end_date=timezone.now().date() + timedelta(days=tariff.validity_days),
-                status='pending'
+                status='pending',
+                allow_negative_lessons=tariff.allow_negative_lessons,
+                negative_limit=tariff.default_negative_limit,
+                allow_group_to_individual=tariff.allow_group_to_individual,
+                group_to_individual_ratio=tariff.group_to_individual_ratio,
             )
 
             payment_result = PaymentService.create_payment(

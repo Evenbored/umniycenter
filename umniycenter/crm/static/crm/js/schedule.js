@@ -447,6 +447,14 @@
         if (group) params.set("group", group);
         if (statusFilter) params.set("status", statusFilter);
 
+        if (window.htmx) {
+            htmx.ajax('GET', `/crm/schedule/lessons/?${params.toString()}`, {
+                target: '#scheduleListHost',
+                swap: 'outerHTML',
+            });
+            return;
+        }
+
         fetch(`/api/v1/schedule/?${params.toString()}`, { headers })
             .then((response) => {
                 if (!response.ok) throw new Error("Failed to load schedule");
@@ -924,18 +932,13 @@
         document.getElementById("scheduleDateTo").value = toDateInput(nextMonth);
         document.getElementById("generateDateFrom").value = toDateInput(today);
         document.getElementById("generateDateTo").value = toDateInput(nextMonth);
-        if (window.htmx) {
-            htmx.ajax('GET', `/crm/schedule/lessons/?date_from=${toDateInput(today)}&date_to=${toDateInput(nextMonth)}`, { target: '#scheduleListHost', swap: 'outerHTML' });
-        }
 
         loadGroups();
         loadTeachers();
         loadStudents();
         loadCourses();
-        if (!window.htmx) {
-            loadTemplates();
-            loadSchedule();
-        }
+        loadSchedule();
+        if (!window.htmx) loadTemplates();
 
         document.getElementById("scheduleDateFrom").addEventListener("change", loadSchedule);
         document.getElementById("scheduleDateTo").addEventListener("change", loadSchedule);

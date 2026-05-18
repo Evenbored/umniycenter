@@ -690,6 +690,28 @@
     color: var(--crm-muted);
 }
 
+.crm-subscription-actions {
+    margin-top: 12px;
+}
+
+.crm-subscription-inline-form {
+    display: grid;
+    grid-template-columns: minmax(150px, 0.7fr) minmax(160px, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+}
+
+.crm-subscription-inline-form input {
+    width: 100%;
+    border: 1px solid var(--crm-border);
+    border-radius: 12px;
+    padding: 9px 11px;
+    background: var(--crm-surface-soft);
+    color: var(--crm-text);
+    font: inherit;
+    font-size: 12px;
+}
+
 .crm-tariff-info {
     padding: 16px;
     background: var(--crm-surface-soft);

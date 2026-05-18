@@ -1,4 +1,5 @@
 from django.core.cache import cache
+from django.core.exceptions import ValidationError
 from datetime import datetime, timedelta
 
 from django.utils import timezone
@@ -6,6 +7,11 @@ from django.utils import timezone
 from accounts.models import UserRole
 from students.models import StudentGroups
 from .models import GroupScheduleTemplate, Schedule
+
+
+def get_group_teacher(group):
+    """Return the teacher for a group supporting both field names used in project history."""
+    return getattr(group, "teacher", None) or getattr(group, "owner", None)
 
 
 def get_user_schedule(user):
@@ -73,6 +79,10 @@ def generate_schedule_for_range(date_from, date_to, group_id=None):
         day_templates = templates.filter(weekday=current_date.weekday())
 
         for template in day_templates:
+            teacher = get_group_teacher(template.group)
+            if not teacher:
+                raise ValidationError(f"У группы {template.group} не указан преподаватель")
+
             start_dt = timezone.make_aware(datetime.combine(current_date, template.start_time))
             
             # Пропускаем занятия, которые уже прошли
@@ -86,7 +96,8 @@ def generate_schedule_for_range(date_from, date_to, group_id=None):
                 classdateStart=start_dt,
                 defaults={
                     "classdateEnd": end_time,
-                    "teacher": template.group.teacher,
+                    "teacher": teacher,
+                    "course": template.group.course,
                     "status": "scheduled",
                 },
             )

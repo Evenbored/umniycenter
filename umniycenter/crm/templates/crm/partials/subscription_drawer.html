@@ -1,0 +1,179 @@
+<div class="crm-drawer__panel crm-drawer__panel--xl" id="subscriptionDrawerContent">
+    <header class="crm-drawer__header">
+        <div>
+            <h3>{% if selected_subscription %}Абонемент #{{ selected_subscription.id }}{% else %}Абонемент{% endif %}</h3>
+            <p>{% if selected_subscription %}{{ selected_subscription.tariff.name }} · {{ selected_subscription.tariff.course.name }}{% endif %}</p>
+        </div>
+        <button class="crm-btn-icon" type="button" onclick="closeSubscriptionDetailsDrawer()" aria-label="Закрыть">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+    </header>
+
+    <div class="crm-drawer__content">
+        {% if selected_subscription %}
+            <div class="crm-student-profile">
+                <div class="crm-student-profile__avatar">A</div>
+                <div>
+                    <h4>{{ selected_subscription.tariff.name }}</h4>
+                    <span><span class="crm-status-badge crm-status-badge--{{ selected_subscription.crm_status_class }}">{{ selected_subscription.crm_status_label }}</span></span>
+                </div>
+            </div>
+
+            <div class="crm-drawer-section">
+                <h4>Клиент и тариф</h4>
+                <div class="crm-info-grid">
+                    <div class="crm-info-item"><span class="crm-info-label">Ученик</span><strong>{{ selected_subscription.student.get_full_name|default:selected_subscription.student.username }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Родитель</span><strong>{{ selected_subscription.parent.get_full_name|default:selected_subscription.parent.username }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Контакт родителя</span><strong>{{ selected_subscription.parent.phone|default:selected_subscription.parent.email|default:'-' }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Тариф</span><strong>{{ selected_subscription.tariff.name }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Курс</span><strong>{{ selected_subscription.tariff.course.name }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Тип</span><strong>{{ selected_subscription.tariff.get_subscription_type_display }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Группа</span><strong>{% if selected_subscription.group %}{{ selected_subscription.group.number }}{% else %}-{% endif %}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Создан</span><strong>{{ selected_subscription.created_at|date:'d.m.Y H:i' }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">ID абонемента</span><strong>#{{ selected_subscription.id }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Стоимость тарифа</span><strong>{{ selected_subscription.tariff.price|floatformat:0 }} ₽</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Оплачено</span><strong>{{ selected_subscription.total_paid|floatformat:0 }} ₽</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Ожидающих платежей</span><strong>{{ selected_subscription.pending_payments_count }}</strong></div>
+                </div>
+            </div>
+
+            <div class="crm-drawer-section">
+                <h4>Занятия и срок действия</h4>
+                <div class="crm-subscription-card">
+                    <div class="crm-subscription-card__header">
+                        <div>
+                            <div class="crm-subscription-card__title">{{ selected_subscription.lessons_remaining }} занятий осталось</div>
+                            <div class="crm-subscription-card__course">Использовано {{ selected_subscription.lessons_used }} из {{ selected_subscription.lessons_total }}</div>
+                        </div>
+                        <span class="crm-status-badge crm-status-badge--{{ selected_subscription.crm_status_class }}">{{ selected_subscription.crm_status_label }}</span>
+                    </div>
+                    <div class="crm-subscription-card__progress">
+                        <div class="crm-subscription-progress-bar"><span class="crm-subscription-progress-bar__fill" style="width: {{ selected_subscription.lessons_percent }}%;"></span></div>
+                    </div>
+                    <div class="crm-subscription-card__dates">
+                        <span>Начало: {{ selected_subscription.start_date|date:'d.m.Y' }}</span>
+                        <span>Окончание: {{ selected_subscription.end_date|date:'d.m.Y' }}</span>
+                        <span>{% if selected_subscription.days_remaining < 0 %}Просрочен{% else %}Осталось дней: {{ selected_subscription.days_remaining }}{% endif %}</span>
+                    </div>
+                    {% if selected_subscription.allow_negative_lessons or selected_subscription.allow_group_to_individual %}
+                        <div class="crm-subscription-progress-text">
+                            {% if selected_subscription.allow_negative_lessons %}Разрешен минус до {{ selected_subscription.negative_limit }} занятий. Доступно в минус: {{ selected_subscription.negative_available }}.{% endif %}
+                            {% if selected_subscription.allow_group_to_individual %} Групповой абонемент можно использовать для индивидуальных занятий: 1 индивидуальное = {{ selected_subscription.group_to_individual_ratio }} групповых.{% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if selected_subscription.is_frozen or selected_subscription.freeze_reason or selected_subscription.frozen_days %}
+                <div class="crm-drawer-section">
+                    <h4>Заморозка</h4>
+                    <div class="crm-info-grid">
+                        <div class="crm-info-item"><span class="crm-info-label">Заморожен до</span><strong>{{ selected_subscription.frozen_until|date:'d.m.Y'|default:'-' }}</strong></div>
+                        <div class="crm-info-item"><span class="crm-info-label">Всего дней заморозки</span><strong>{{ selected_subscription.frozen_days }}</strong></div>
+                        <div class="crm-info-item"><span class="crm-info-label">Причина</span><strong>{{ selected_subscription.freeze_reason|default:'-' }}</strong></div>
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if selected_subscription.closed_at or selected_subscription.close_reason %}
+                <div class="crm-drawer-section">
+                    <h4>Закрытие абонемента</h4>
+                    <div class="crm-info-grid">
+                        <div class="crm-info-item"><span class="crm-info-label">Дата закрытия</span><strong>{{ selected_subscription.closed_at|date:'d.m.Y H:i'|default:'-' }}</strong></div>
+                        <div class="crm-info-item"><span class="crm-info-label">Кто закрыл</span><strong>{% if selected_subscription.closed_by %}{{ selected_subscription.closed_by.get_full_name|default:selected_subscription.closed_by.username }}{% else %}-{% endif %}</strong></div>
+                        <div class="crm-info-item"><span class="crm-info-label">Причина</span><strong>{{ selected_subscription.close_reason|default:'-' }}</strong></div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <div class="crm-drawer-section">
+                <h4>Оплаты</h4>
+                {% if subscription_payments %}
+                    <div class="crm-table-wrapper">
+                        <table class="crm-table">
+                            <thead><tr><th>Платеж</th><th>Сумма</th><th>Способ</th><th>Статус</th><th>Дата</th></tr></thead>
+                            <tbody>
+                                {% for payment in subscription_payments %}
+                                    <tr>
+                                        <td>#{{ payment.id }}</td>
+                                        <td><strong>{{ payment.amount|floatformat:0 }} ₽</strong></td>
+                                        <td>{{ payment.get_payment_method_display }}</td>
+                                        <td>{% if payment.status == 'completed' %}<span class="crm-status-badge crm-status-badge--active">{{ payment.get_status_display }}</span>{% else %}<span class="crm-status-badge crm-status-badge--archive">{{ payment.get_status_display }}</span>{% endif %}</td>
+                                        <td>{{ payment.created_at|date:'d.m.Y H:i' }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p style="color: var(--crm-muted); font-size: 13px;">Платежей по абонементу пока нет</p>
+                {% endif %}
+            </div>
+
+            <div class="crm-drawer-section">
+                <h4>История операций</h4>
+                {% if subscription_logs %}
+                    {% for log in subscription_logs %}
+                        <div class="crm-subscription-card">
+                            <div class="crm-subscription-card__header">
+                                <div>
+                                    <div class="crm-subscription-card__title">{{ log.get_action_display }}</div>
+                                    <div class="crm-subscription-card__course">{{ log.created_at|date:'d.m.Y H:i' }}{% if log.created_by %} · {{ log.created_by.get_full_name|default:log.created_by.username }}{% endif %}</div>
+                                </div>
+                                <span class="crm-group-chip">Баланс: {{ log.balance_after }}</span>
+                            </div>
+                            <div class="crm-subscription-progress-text">Изменение занятий: {{ log.lessons_delta }}{% if log.comment %} · {{ log.comment }}{% endif %}</div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p style="color: var(--crm-muted); font-size: 13px;">История операций пока пуста</p>
+                {% endif %}
+            </div>
+
+            <div class="crm-form-alert" {% if not form_error %}hidden{% endif %}>{{ form_error|default:'' }}</div>
+        {% endif %}
+    </div>
+
+    <footer class="crm-drawer__footer crm-subscription-drawer-footer">
+        <div class="crm-subscription-footer__left">
+            <button class="crm-btn crm-btn--secondary" type="button" onclick="closeSubscriptionDetailsDrawer()">Закрыть</button>
+        </div>
+        {% if selected_subscription %}
+            <div class="crm-subscription-footer__actions">
+                {% if selected_subscription.status == 'active' %}
+                    <form hx-post="{% url 'crm:subscription_freeze' selected_subscription.id %}" hx-target="#subscriptionDrawerContent" hx-swap="outerHTML" class="crm-subscription-action-form">
+                        {% csrf_token %}
+                        <label class="crm-subscription-action-field crm-subscription-action-field--date">
+                            <span>Заморозить до</span>
+                            <input type="date" name="frozen_until" required>
+                        </label>
+                        <label class="crm-subscription-action-field">
+                            <span>Причина заморозки</span>
+                            <input type="text" name="freeze_reason" placeholder="Например: отпуск">
+                        </label>
+                        <button class="crm-btn crm-btn--secondary" type="submit">Заморозить</button>
+                    </form>
+                {% elif selected_subscription.status == 'frozen' %}
+                    <button class="crm-btn crm-btn--primary" type="button" hx-post="{% url 'crm:subscription_unfreeze' selected_subscription.id %}" hx-target="#subscriptionDrawerContent" hx-swap="outerHTML">Разморозить</button>
+                {% endif %}
+                {% if selected_subscription.status != 'canceled' and selected_subscription.status != 'completed' %}
+                    <form hx-post="{% url 'crm:subscription_close' selected_subscription.id %}" hx-target="#subscriptionDrawerContent" hx-swap="outerHTML" class="crm-subscription-action-form crm-subscription-action-form--danger">
+                        {% csrf_token %}
+                        <label class="crm-subscription-action-field crm-subscription-action-field--select">
+                            <span>Действие</span>
+                            <select name="close_action" required>
+                                <option value="canceled">Отменить</option>
+                                <option value="completed">Завершить вручную</option>
+                            </select>
+                        </label>
+                        <label class="crm-subscription-action-field crm-subscription-action-field--reason">
+                            <span>Причина закрытия</span>
+                            <input type="text" name="close_reason" placeholder="Например: клиент отказался" required>
+                        </label>
+                        <button class="crm-btn crm-btn--secondary" type="submit" hx-confirm="Закрыть абонемент? Действие сохранится в истории.">Закрыть абонемент</button>
+                    </form>
+                {% endif %}
+            </div>
+        {% endif %}
+    </footer>
+</div>

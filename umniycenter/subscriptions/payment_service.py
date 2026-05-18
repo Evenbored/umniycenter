@@ -16,7 +16,7 @@ from django.db import transaction
 from django.utils import timezone
 from yookassa import Configuration, Payment as YooPayment
 
-from .models import Payment, Subscription
+from .models import Payment, Subscription, SubscriptionLog
 from accounts.models import CustomUser
 
 logger = logging.getLogger(__name__)
@@ -417,6 +417,7 @@ class PaymentService:
             else:
                 subscription.status = 'active'
                 subscription.save()
+                SubscriptionLog.log(subscription, 'activated', comment=f'Платеж #{payment.id}')
                 logger.info(f"Subscription {subscription.id} activated for student {subscription.student.id}")
             
             # Обновляем статус ученика и родителя
@@ -471,10 +472,12 @@ class PaymentService:
             return
 
         try:
-            from groups.models import SchoolGroups
             from students.models import StudentGroups
 
-            group = SchoolGroups.objects.get(id=int(match.group(1)))
+            group = payment.subscription.group
+            if not group:
+                from groups.models import SchoolGroups
+                group = SchoolGroups.objects.get(id=int(match.group(1)))
             subscription = payment.subscription
             if group.course_id != subscription.tariff.course_id:
                 logger.warning(
@@ -483,6 +486,10 @@ class PaymentService:
                 return
 
             StudentGroups.objects.get_or_create(student=subscription.student, group=group)
+            if subscription.group_id != group.id:
+                subscription.group = group
+                subscription.save(update_fields=['group', 'updated_at'])
+            SubscriptionLog.log(subscription, 'group_assigned', comment=f'Группа #{group.id}')
         except Exception as e:
             logger.warning(f"Could not assign requested group after payment {payment.id}: {str(e)}")
 

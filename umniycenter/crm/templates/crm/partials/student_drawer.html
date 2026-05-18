@@ -51,7 +51,33 @@
                 </div>
                 {% if student_subscriptions %}
                     {% for sub in student_subscriptions %}
-                        <div class="crm-subscription-card"><div class="crm-subscription-card__header"><div><div class="crm-subscription-card__title">{{ sub.tariff.name }}</div><div class="crm-subscription-card__course">{{ sub.tariff.course.name }}</div></div><span class="crm-status-badge {% if sub.is_valid %}crm-status-badge--active{% else %}crm-status-badge--archive{% endif %}">{% if sub.is_valid %}Активна{% else %}Неактивна{% endif %}</span></div><div class="crm-subscription-progress-text">Использовано: {{ sub.lessons_used }} из {{ sub.lessons_total }} занятий (осталось: <strong>{{ sub.lessons_remaining }}</strong>)</div><div class="crm-subscription-card__dates"><span>Начало: {{ sub.start_date|date:'d.m.Y' }}</span><span>Окончание: {{ sub.end_date|date:'d.m.Y' }}</span></div></div>
+                        <div class="crm-subscription-card">
+                            <div class="crm-subscription-card__header">
+                                <div>
+                                    <div class="crm-subscription-card__title">{{ sub.tariff.name }}</div>
+                                    <div class="crm-subscription-card__course">{{ sub.tariff.course.name }} · {{ sub.tariff.get_subscription_type_display }}{% if sub.group %} · {{ sub.group.number }}{% endif %}</div>
+                                </div>
+                                <span class="crm-status-badge {% if sub.is_frozen %}crm-status-badge--archive{% elif sub.lessons_remaining < 0 %}crm-status-badge--archive{% elif sub.is_valid %}crm-status-badge--active{% else %}crm-status-badge--archive{% endif %}">{% if sub.is_frozen %}Заморожен{% elif sub.lessons_remaining < 0 %}В минусе{% elif sub.is_valid %}Активна{% else %}{{ sub.get_status_display }}{% endif %}</span>
+                            </div>
+                            <div class="crm-subscription-progress-text">Использовано: {{ sub.lessons_used }} из {{ sub.lessons_total }} занятий (остаток: <strong>{{ sub.lessons_remaining }}</strong>){% if sub.allow_negative_lessons %} · минус до {{ sub.negative_limit }}{% endif %}{% if sub.allow_group_to_individual %} · индивидуальное = {{ sub.group_to_individual_ratio }} групп.{% endif %}</div>
+                            <div class="crm-subscription-card__dates"><span>Начало: {{ sub.start_date|date:'d.m.Y' }}</span><span>Окончание: {{ sub.end_date|date:'d.m.Y' }}</span></div>
+                            {% if sub.is_frozen %}<div class="crm-subscription-progress-text">Заморожен до {{ sub.frozen_until|date:'d.m.Y' }}{% if sub.freeze_reason %}: {{ sub.freeze_reason }}{% endif %}</div>{% endif %}
+                            <div class="crm-subscription-actions">
+                                {% if sub.status == 'active' %}
+                                    <form hx-post="{% url 'crm:student_subscription_freeze' selected_student.id sub.id %}" hx-target="#studentDrawerContent" hx-swap="outerHTML" class="crm-subscription-inline-form">
+                                        {% csrf_token %}
+                                        <input type="date" name="frozen_until" required>
+                                        <input type="text" name="freeze_reason" placeholder="Причина">
+                                        <button class="crm-btn crm-btn--secondary crm-btn--sm" type="submit">Заморозить</button>
+                                    </form>
+                                {% elif sub.status == 'frozen' %}
+                                    <form hx-post="{% url 'crm:student_subscription_unfreeze' selected_student.id sub.id %}" hx-target="#studentDrawerContent" hx-swap="outerHTML">
+                                        {% csrf_token %}
+                                        <button class="crm-btn crm-btn--secondary crm-btn--sm" type="submit">Разморозить</button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </div>
                     {% endfor %}
                 {% else %}
                     <p style="color: var(--crm-muted); font-size: 13px;">У ученика нет активных подписок</p>
@@ -110,6 +136,7 @@
                 <form class="crm-add-group-form" hx-post="{% url 'crm:student_add_group' selected_student.id %}" hx-target="#studentDrawerContent" hx-swap="outerHTML">
                     {% csrf_token %}
                     <select class="crm-select" name="group_id" required><option value="">Выберите группу</option>{% for group in available_groups %}<option value="{{ group.id }}">{{ group.course.name }} · {{ group.number }} · {{ group.teacher|default:'Без преподавателя' }}</option>{% endfor %}</select>
+                    <label class="crm-checkbox-filter" style="margin: 0;"><input type="checkbox" name="force_add"> Ручное добавление без абонемента</label>
                     <button class="crm-btn crm-btn--primary" type="submit"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Добавить в группу</button>
                 </form>
             </div>

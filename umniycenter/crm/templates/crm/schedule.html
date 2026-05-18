@@ -23,14 +23,14 @@
 <form id="scheduleFiltersForm" class="crm-toolbar">
     <div class="crm-toolbar__filters" style="flex-direction: column; align-items: stretch;">
         <div style="display: flex; gap: 12px; align-items: center;">
-            <input class="crm-input" id="scheduleDateFrom" name="date_from" type="date" value="{{ request.GET.date_from }}" hx-get="{% url 'crm:schedule_lessons' %}" hx-trigger="change" hx-target="#scheduleListHost" hx-swap="outerHTML" hx-include="#scheduleFiltersForm">
+            <input class="crm-input" id="scheduleDateFrom" name="date_from" type="date" value="{{ request.GET.date_from }}">
             <span style="color: var(--crm-muted);">—</span>
-            <input class="crm-input" id="scheduleDateTo" name="date_to" type="date" value="{{ request.GET.date_to }}" hx-get="{% url 'crm:schedule_lessons' %}" hx-trigger="change" hx-target="#scheduleListHost" hx-swap="outerHTML" hx-include="#scheduleFiltersForm">
-            <select id="scheduleGroupFilter" name="group" class="crm-select" hx-get="{% url 'crm:schedule_lessons' %}" hx-trigger="change" hx-target="#scheduleListHost" hx-swap="outerHTML" hx-include="#scheduleFiltersForm">
+            <input class="crm-input" id="scheduleDateTo" name="date_to" type="date" value="{{ request.GET.date_to }}">
+            <select id="scheduleGroupFilter" name="group" class="crm-select">
                 <option value="">Все группы</option>
                 {% for group in groups %}<option value="{{ group.id }}" {% if request.GET.group == group.id|stringformat:'s' %}selected{% endif %}>{{ group.course.name }} · {{ group.number }}</option>{% endfor %}
             </select>
-        <select id="scheduleStatusFilter" name="status" class="crm-select" hx-get="{% url 'crm:schedule_lessons' %}" hx-trigger="change" hx-target="#scheduleListHost" hx-swap="outerHTML" hx-include="#scheduleFiltersForm">
+        <select id="scheduleStatusFilter" name="status" class="crm-select">
             <option value="">Все статусы</option>
             <option value="scheduled" {% if request.GET.status == 'scheduled' %}selected{% endif %}>Запланировано</option>
             <option value="completed" {% if request.GET.status == 'completed' %}selected{% endif %}>Прошло</option>
@@ -39,9 +39,9 @@
         </select>
         </div>
         <div style="display: flex; gap: 6px;">
-            <button class="crm-btn crm-btn--secondary crm-btn--sm" type="button" onclick="setDateRangeToday()" hx-get="{% url 'crm:schedule_lessons' %}" hx-target="#scheduleListHost" hx-swap="outerHTML" hx-include="#scheduleFiltersForm">Сегодня</button>
-            <button class="crm-btn crm-btn--secondary crm-btn--sm" type="button" onclick="setDateRangeWeek()" hx-get="{% url 'crm:schedule_lessons' %}" hx-target="#scheduleListHost" hx-swap="outerHTML" hx-include="#scheduleFiltersForm">Неделя</button>
-            <button class="crm-btn crm-btn--secondary crm-btn--sm" type="button" onclick="setDateRangeMonth()" hx-get="{% url 'crm:schedule_lessons' %}" hx-target="#scheduleListHost" hx-swap="outerHTML" hx-include="#scheduleFiltersForm">Месяц</button>
+            <button class="crm-btn crm-btn--secondary crm-btn--sm" type="button" onclick="setDateRangeToday()">Сегодня</button>
+            <button class="crm-btn crm-btn--secondary crm-btn--sm" type="button" onclick="setDateRangeWeek()">Неделя</button>
+            <button class="crm-btn crm-btn--secondary crm-btn--sm" type="button" onclick="setDateRangeMonth()">Месяц</button>
         </div>
     </div>
 </form>

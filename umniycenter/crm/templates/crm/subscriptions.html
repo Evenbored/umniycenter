@@ -1,0 +1,82 @@
+{% extends 'crm/base.html' %}
+{% load static %}
+
+{% block title %}Абонементы - CRM{% endblock title %}
+{% block page_title %}Абонементы{% endblock page_title %}
+
+{% block links %}
+<link rel="stylesheet" href="{% static 'crm/css/students.css' %}">
+{% endblock links %}
+
+{% block content %}
+<section class="crm-section-header">
+    <div>
+        <p class="crm-section-desc">Контроль активных, ожидающих оплаты, заканчивающихся и замороженных абонементов</p>
+    </div>
+    <div class="crm-section-actions">
+        <button class="crm-btn crm-btn--secondary" type="button" onclick="document.body.dispatchEvent(new CustomEvent('crm:toast', { detail: { type: 'info', title: 'Экспорт', message: 'Экспорт абонементов будет реализован позже.' } }))">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
+            Экспорт
+        </button>
+        <button class="crm-btn crm-btn--primary" type="button" hx-get="{% url 'crm:subscriptions_table' %}" hx-target="#subscriptionsTableHost" hx-swap="innerHTML" hx-include="#subscriptionsSearch, .crm-toolbar__filters">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+            Обновить
+        </button>
+    </div>
+</section>
+
+<section class="crm-toolbar">
+    <div class="crm-toolbar__search">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="search" id="subscriptionsSearch" name="search" placeholder="Поиск по ученику, родителю, телефону, тарифу, курсу, группе..." value="{{ request.GET.search|default:'' }}" hx-get="{% url 'crm:subscriptions_table' %}" hx-trigger="keyup changed delay:300ms, search" hx-target="#subscriptionsTableHost" hx-swap="innerHTML" hx-include=".crm-toolbar__filters">
+    </div>
+    <div class="crm-toolbar__filters">
+        <select name="status" class="crm-select" hx-get="{% url 'crm:subscriptions_table' %}" hx-trigger="change" hx-target="#subscriptionsTableHost" hx-swap="innerHTML" hx-include="#subscriptionsSearch, .crm-toolbar__filters">
+            <option value="">Все статусы</option>
+            {% for value, label in status_choices %}<option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+        <select name="risk" class="crm-select" hx-get="{% url 'crm:subscriptions_table' %}" hx-trigger="change" hx-target="#subscriptionsTableHost" hx-swap="innerHTML" hx-include="#subscriptionsSearch, .crm-toolbar__filters">
+            <option value="">Все состояния</option>
+            <option value="ending_lessons" {% if request.GET.risk == 'ending_lessons' %}selected{% endif %}>Заканчиваются по занятиям</option>
+            <option value="ending_date" {% if request.GET.risk == 'ending_date' %}selected{% endif %}>Истекают за 7 дней</option>
+            <option value="expired_date" {% if request.GET.risk == 'expired_date' %}selected{% endif %}>Просрочены по сроку</option>
+            <option value="pending_payment" {% if request.GET.risk == 'pending_payment' %}selected{% endif %}>Ожидают оплаты</option>
+            <option value="negative" {% if request.GET.risk == 'negative' %}selected{% endif %}>В минусе</option>
+        </select>
+        <select name="subscription_type" class="crm-select" hx-get="{% url 'crm:subscriptions_table' %}" hx-trigger="change" hx-target="#subscriptionsTableHost" hx-swap="innerHTML" hx-include="#subscriptionsSearch, .crm-toolbar__filters">
+            <option value="">Все типы</option>
+            {% for value, label in subscription_type_choices %}<option value="{{ value }}" {% if request.GET.subscription_type == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+        <select name="course" class="crm-select" hx-get="{% url 'crm:subscriptions_table' %}" hx-trigger="change" hx-target="#subscriptionsTableHost" hx-swap="innerHTML" hx-include="#subscriptionsSearch, .crm-toolbar__filters">
+            <option value="">Все курсы</option>
+            {% for course in courses %}<option value="{{ course.id }}" {% if request.GET.course|add:'' == course.id|stringformat:'s' %}selected{% endif %}>{{ course.name }}</option>{% endfor %}
+        </select>
+        <select name="sort" class="crm-select" hx-get="{% url 'crm:subscriptions_table' %}" hx-trigger="change" hx-target="#subscriptionsTableHost" hx-swap="innerHTML" hx-include="#subscriptionsSearch, .crm-toolbar__filters">
+            <option value="date_new" {% if request.GET.sort|default:'date_new' == 'date_new' %}selected{% endif %}>Сначала новые</option>
+            <option value="date_old" {% if request.GET.sort == 'date_old' %}selected{% endif %}>Сначала старые</option>
+            <option value="end_soon" {% if request.GET.sort == 'end_soon' %}selected{% endif %}>Скоро закончатся</option>
+            <option value="lessons_low" {% if request.GET.sort == 'lessons_low' %}selected{% endif %}>Меньше занятий</option>
+            <option value="student_az" {% if request.GET.sort == 'student_az' %}selected{% endif %}>Ученик А-Я</option>
+        </select>
+    </div>
+</section>
+
+<section class="crm-data-panel">
+    <div id="subscriptionsTableHost">
+        {% include 'crm/partials/subscriptions_table.html' %}
+    </div>
+</section>
+
+<aside class="crm-drawer" id="subscriptionDetailsDrawer">
+    <div class="crm-drawer__overlay" onclick="closeSubscriptionDetailsDrawer()"></div>
+    {% include 'crm/partials/subscription_drawer.html' %}
+</aside>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+    function closeSubscriptionDetailsDrawer() {
+        document.getElementById('subscriptionDetailsDrawer')?.classList.remove('is-open');
+    }
+</script>
+{% endblock scripts %}

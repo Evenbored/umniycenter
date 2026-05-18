@@ -2254,6 +2254,89 @@ a {
     border-top: 1px solid var(--crm-border);
 }
 
+.crm-subscription-drawer-footer {
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+}
+
+.crm-subscription-footer__left {
+    flex: 0 0 auto;
+}
+
+.crm-subscription-footer__actions {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+}
+
+.crm-subscription-action-form {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    gap: 10px;
+    width: 100%;
+    max-width: 820px;
+    padding: 10px;
+    border: 1px solid var(--crm-border);
+    border-radius: 16px;
+    background: var(--crm-surface-soft);
+}
+
+.crm-subscription-action-form--danger {
+    border-color: rgba(239, 68, 68, 0.22);
+    background: var(--crm-danger-soft-bg);
+}
+
+.crm-subscription-action-field {
+    min-width: 180px;
+    flex: 1 1 190px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.crm-subscription-action-field--date,
+.crm-subscription-action-field--select {
+    flex: 0 0 170px;
+    min-width: 150px;
+}
+
+.crm-subscription-action-field--reason {
+    flex: 1 1 280px;
+}
+
+.crm-subscription-action-field span {
+    color: var(--crm-muted);
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.crm-subscription-action-field input,
+.crm-subscription-action-field select {
+    width: 100%;
+    min-height: 42px;
+    border: 1px solid var(--crm-border);
+    border-radius: 13px;
+    padding: 10px 12px;
+    background: var(--crm-surface);
+    color: var(--crm-text);
+    font: inherit;
+    font-size: 14px;
+    outline: 0;
+    transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
+}
+
+.crm-subscription-action-field input:focus,
+.crm-subscription-action-field select:focus {
+    border-color: var(--crm-primary);
+    box-shadow: 0 0 0 4px var(--crm-focus-ring);
+}
+
 .crm-drawer-section,
 .crm-modal-section {
     margin-bottom: 28px;
@@ -2333,5 +2416,24 @@ a {
     .crm-drawer__footer,
     .crm-modal__footer {
         flex-wrap: wrap;
+    }
+
+    .crm-subscription-drawer-footer,
+    .crm-subscription-footer__actions,
+    .crm-subscription-action-form {
+        align-items: stretch;
+    }
+
+    .crm-subscription-drawer-footer,
+    .crm-subscription-action-form {
+        flex-direction: column;
+    }
+
+    .crm-subscription-action-field,
+    .crm-subscription-action-field--date,
+    .crm-subscription-action-field--select,
+    .crm-subscription-action-field--reason {
+        flex: 1 1 auto;
+        min-width: 0;
     }
 }

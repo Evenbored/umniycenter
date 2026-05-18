@@ -24,29 +24,77 @@
     <script src="{% static 'vendor/alpine/alpine.min.js' %}" defer></script>
     {% block links %}{% endblock links %}
     <script>
-        document.addEventListener('htmx:responseError', (event) => {
-            const detail = event.detail || {};
-            let message = 'Не удалось выполнить действие';
-            const alert = detail.target?.querySelector?.('.crm-form-alert');
-            if (alert?.textContent?.trim()) {
-                message = alert.textContent.trim();
+        function crmFlattenErrors(value) {
+            if (!value) return [];
+            if (typeof value === 'string') return [value];
+            if (Array.isArray(value)) return value.flatMap(crmFlattenErrors);
+            if (typeof value === 'object') return Object.values(value).flatMap(crmFlattenErrors);
+            return [String(value)];
+        }
+
+        function crmMessageByStatus(status) {
+            if (status === 400) return 'Проверьте данные формы и попробуйте еще раз';
+            if (status === 401 || status === 403) return 'Недостаточно прав или истекла сессия';
+            if (status === 404) return 'Запрошенные данные не найдены';
+            if (status >= 500) return 'На сервере произошла ошибка. Подробности смотрите в консоли/логах сервера';
+            return 'Не удалось выполнить действие';
+        }
+
+        function crmExtractErrorMessage(detail) {
+            const xhr = detail?.xhr;
+            const status = xhr?.status || 0;
+            const fallback = crmMessageByStatus(status);
+
+            const visibleAlert = detail?.target?.querySelector?.('.crm-form-alert:not([hidden]), .crm-form-alert');
+            if (visibleAlert?.textContent?.trim()) {
+                return visibleAlert.textContent.trim();
+            }
+
+            const responseText = xhr?.responseText || '';
+            if (!responseText.trim()) {
+                return fallback;
             }
 
             try {
-                const payload = detail.xhr?.responseText ? JSON.parse(detail.xhr.responseText) : null;
-                if (payload) {
-                    if (payload.error) {
-                        message = payload.error;
-                    } else {
-                        const errors = Object.values(payload).flat().filter(Boolean);
-                        if (errors.length) {
-                            message = errors.join(' ');
-                        }
-                    }
+                const payload = JSON.parse(responseText);
+                const explicitMessage = payload.error || payload.message || payload.detail;
+                if (explicitMessage) {
+                    return String(explicitMessage);
+                }
+                const errors = crmFlattenErrors(payload).filter(Boolean);
+                if (errors.length) {
+                    return errors.join(' ');
                 }
             } catch (error) {
-                message = detail.xhr?.responseText || message;
+                // Not JSON. It can be an HTML error page; never show raw HTML in toast.
             }
+
+            if (/<html[\s>]|<!doctype html/i.test(responseText)) {
+                try {
+                    const doc = new DOMParser().parseFromString(responseText, 'text/html');
+                    const alert = doc.querySelector('.crm-form-alert, [data-error-message]');
+                    if (alert?.textContent?.trim()) {
+                        return alert.textContent.trim();
+                    }
+                    const heading = doc.querySelector('main h1, h1, title');
+                    const headingText = heading?.textContent?.replace(/\s+/g, ' ').trim();
+                    if (headingText && status < 500) {
+                        return headingText;
+                    }
+                } catch (error) {
+                    // Keep fallback.
+                }
+                return fallback;
+            }
+
+            const plainText = responseText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+            if (!plainText) return fallback;
+            return plainText.length > 240 ? `${plainText.slice(0, 240)}…` : plainText;
+        }
+
+        document.addEventListener('htmx:responseError', (event) => {
+            const detail = event.detail || {};
+            const message = crmExtractErrorMessage(detail);
 
             document.body.dispatchEvent(new CustomEvent('crm:toast', {
                 detail: {
@@ -115,6 +163,10 @@
                 <a class="crm-nav__item {% if url_name == 'tariffs' %}is-active{% endif %}" href="{% url 'crm:tariffs' %}">
                     <span class="crm-nav__icon">T</span>
                     <span>Тарифы</span>
+                </a>
+                <a class="crm-nav__item {% if url_name == 'subscriptions' %}is-active{% endif %}" href="{% url 'crm:subscriptions' %}">
+                    <span class="crm-nav__icon">A</span>
+                    <span>Абонементы</span>
                 </a>
                 <a class="crm-nav__item  {% if url_name == 'courses' %}is-active{% endif %}" href="{% url "crm:courses" %}">
                     <span class="crm-nav__icon">C</span>
