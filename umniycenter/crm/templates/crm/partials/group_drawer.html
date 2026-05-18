@@ -1,4 +1,4 @@
-<div class="crm-drawer__panel crm-drawer__panel--wide" id="groupDrawerContent" x-data="{ editing: {{ selected_group|yesno:'false,true' }} }">
+<div class="crm-drawer__panel crm-drawer__panel--xl" id="groupDrawerContent" x-data="{ editing: {{ selected_group|yesno:'false,true' }} }">
     <header class="crm-drawer__header"><div><h3 id="groupDrawerTitle">{% if selected_group %}Группа #{{ selected_group.id }}{% else %}Добавить группу{% endif %}</h3><p id="groupDrawerSubtitle">{% if selected_group %}{{ selected_group.course.name }}{% else %}Создание новой группы в системе{% endif %}</p></div><button class="crm-btn-icon" type="button" onclick="closeGroupDetailsDrawer()" aria-label="Закрыть"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></header>
     <div class="crm-drawer__content">
         {% if selected_group %}

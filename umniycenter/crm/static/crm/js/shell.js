@@ -1,4 +1,44 @@
 (function () {
+    const THEME_STORAGE_KEY = 'crm-theme';
+
+    function getPreferredTheme() {
+        const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+        if (savedTheme === 'dark' || savedTheme === 'light') {
+            return savedTheme;
+        }
+
+        return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+
+    function applyTheme(theme) {
+        const nextTheme = theme === 'dark' ? 'dark' : 'light';
+        document.documentElement.dataset.theme = nextTheme;
+
+        const toggle = document.querySelector('[data-theme-toggle]');
+        if (toggle) {
+            const isDark = nextTheme === 'dark';
+            toggle.setAttribute('aria-pressed', String(isDark));
+            toggle.setAttribute('aria-label', isDark ? 'Включить светлую тему' : 'Включить темную тему');
+            toggle.setAttribute('title', isDark ? 'Включить светлую тему' : 'Включить темную тему');
+        }
+    }
+
+    function initThemeToggle() {
+        applyTheme(getPreferredTheme());
+
+        const toggle = document.querySelector('[data-theme-toggle]');
+        if (!toggle) {
+            return;
+        }
+
+        toggle.addEventListener('click', () => {
+            const currentTheme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+            const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+            applyTheme(nextTheme);
+        });
+    }
+
     function toggleSidebar() {
         const toggle = document.querySelector("[data-sidebar-toggle]");
 
@@ -139,6 +179,7 @@
     window.CRM.loadNavStats = loadNavStats;
 
     document.addEventListener("DOMContentLoaded", () => {
+        initThemeToggle();
         toggleSidebar();
         initNavDropdowns();
         initUserMenu();

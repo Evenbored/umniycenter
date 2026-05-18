@@ -1,6 +1,6 @@
 <div class="crm-modal" id="scheduleTemplateModal" {% if not selected_template %}hx-swap-oob="outerHTML"{% endif %}>
     <div class="crm-modal__overlay" onclick="closeScheduleTemplateModal()"></div>
-    <div class="crm-modal__content">
+    <div class="crm-modal__content crm-modal__content--md">
         <div class="crm-modal__header">
             <h3>{% if selected_template %}Редактировать стандартное время{% else %}Добавить стандартное время{% endif %}</h3>
             <button class="crm-modal__close" type="button" onclick="closeScheduleTemplateModal()">×</button>

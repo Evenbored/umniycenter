@@ -64,7 +64,7 @@
 }
 
 .crm-btn--success:hover {
-    background: #15803d;
+    background: var(--crm-green);
 }
 
 .crm-btn--danger {
@@ -284,13 +284,13 @@
 }
 
 .crm-status-badge--new {
-    background: #fef3c7;
-    color: #b45309;
+    background: rgba(245, 158, 11, 0.14);
+    color: var(--crm-orange);
 }
 
 .crm-status-badge--processed {
-    background: #dbeafe;
-    color: #1d4ed8;
+    background: var(--crm-soft-blue-bg);
+    color: var(--crm-soft-blue-text);
 }
 
 .crm-spinner {
@@ -369,106 +369,8 @@
     color: var(--crm-muted);
 }
 
-.crm-drawer {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 100;
-    display: none;
-}
-
-.crm-drawer.is-open {
-    display: block;
-}
-
 #studentDrawer {
     z-index: 110;
-}
-
-.crm-drawer__overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(15, 23, 42, 0.45);
-    backdrop-filter: blur(4px);
-    animation: crm-fade-in 0.2s;
-    z-index: 1;
-}
-
-.crm-drawer__panel {
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: min(540px, 92vw);
-    display: flex;
-    flex-direction: column;
-    background: var(--crm-surface);
-    box-shadow: -20px 0 60px rgba(15, 23, 42, 0.25);
-    animation: crm-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    z-index: 2;
-}
-
-.crm-drawer__panel--wide {
-    width: min(720px, 96vw);
-}
-
-@keyframes crm-fade-in {
-    from {
-        opacity: 0;
-    }
-}
-
-@keyframes crm-slide-in {
-    from {
-        transform: translateX(100%);
-    }
-}
-
-.crm-drawer__header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 24px;
-    border-bottom: 1px solid var(--crm-border);
-    flex-shrink: 0;
-}
-
-.crm-drawer__header h3 {
-    margin: 0;
-    font-size: 20px;
-    letter-spacing: -0.03em;
-}
-
-.crm-drawer__header p {
-    margin: 4px 0 0;
-    color: var(--crm-muted);
-    font-size: 13px;
-}
-
-.crm-drawer__content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 24px;
-}
-
-.crm-drawer-section {
-    margin-bottom: 28px;
-}
-
-.crm-drawer-section:last-child {
-    margin-bottom: 0;
-}
-
-.crm-drawer-section h4 {
-    margin: 0 0 14px;
-    color: var(--crm-muted);
-    font-size: 12px;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
 }
 
 .crm-info-grid {
@@ -508,16 +410,6 @@
     background: var(--crm-surface-soft);
     font-size: 12px;
     font-weight: 600;
-}
-
-.crm-drawer__footer {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 10px;
-    padding: 20px 24px;
-    border-top: 1px solid var(--crm-border);
-    flex-shrink: 0;
 }
 
 .crm-form-grid {
@@ -578,7 +470,7 @@
 }
 
 .crm-form-field input[readonly] {
-    background: #f1f5f9;
+    background: var(--crm-surface-soft);
     color: var(--crm-muted);
     cursor: not-allowed;
 }
@@ -587,15 +479,15 @@
     margin-bottom: 18px;
     border-radius: 15px;
     padding: 12px 14px;
-    background: #fee2e2;
-    color: #991b1b;
+    background: var(--crm-danger-soft-bg);
+    color: var(--crm-danger-soft-text);
     font-size: 13px;
     font-weight: 700;
 }
 
 .crm-form-alert.is-success {
-    background: #dcfce7;
-    color: #166534;
+    background: var(--crm-success-soft-bg);
+    color: var(--crm-success-soft-text);
 }
 
 .crm-request-preview {
@@ -635,13 +527,13 @@
 }
 
 .crm-toast:not([class*="crm-toast--"]).is-success {
-    background: linear-gradient(135deg, #dcfce7, #f0fdf4);
-    border-color: #86efac;
+    background: var(--crm-success-soft-bg);
+    border-color: var(--crm-green);
 }
 
 .crm-toast:not([class*="crm-toast--"]).is-error {
-    background: linear-gradient(135deg, #fee2e2, #fef2f2);
-    border-color: #fca5a5;
+    background: var(--crm-danger-soft-bg);
+    border-color: var(--crm-red);
 }
 
 .crm-toast__icon {
@@ -655,12 +547,12 @@
 }
 
 .crm-toast:not([class*="crm-toast--"]).is-success .crm-toast__icon {
-    background: #22c55e;
+    background: var(--crm-green);
     color: #ffffff;
 }
 
 .crm-toast:not([class*="crm-toast--"]).is-error .crm-toast__icon {
-    background: #ef4444;
+    background: var(--crm-red);
     color: #ffffff;
 }
 
@@ -738,14 +630,6 @@
 
     .crm-table-wrapper {
         overflow-x: scroll;
-    }
-
-    .crm-drawer__panel {
-        width: 100%;
-    }
-
-    .crm-drawer__footer {
-        flex-wrap: wrap;
     }
 
     .crm-form-grid {

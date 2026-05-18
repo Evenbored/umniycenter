@@ -73,23 +73,23 @@
 }
 
 .crm-status-badge--scheduled {
-    background: #dcfce7;
-    color: #166534;
+    background: var(--crm-success-soft-bg);
+    color: var(--crm-success-soft-text);
 }
 
 .crm-status-badge--completed {
-    background: #e0e7ff;
-    color: #3730a3;
+    background: var(--crm-soft-blue-bg);
+    color: var(--crm-soft-blue-text);
 }
 
 .crm-status-badge--cancelled {
-    background: #fee2e2;
-    color: #991b1b;
+    background: var(--crm-danger-soft-bg);
+    color: var(--crm-danger-soft-text);
 }
 
 .crm-status-badge--rescheduled {
-    background: #fef3c7;
-    color: #92400e;
+    background: rgba(245, 158, 11, 0.14);
+    color: var(--crm-orange);
 }
 
 .crm-form-field {
@@ -369,8 +369,8 @@
 }
 
 .crm-today-student-card__status.is-marked {
-    background: #e0e7ff;
-    color: #3730a3;
+    background: var(--crm-soft-blue-bg);
+    color: var(--crm-soft-blue-text);
 }
 
 .crm-today-student-card__actions {

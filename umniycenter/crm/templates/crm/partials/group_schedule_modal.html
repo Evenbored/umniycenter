@@ -1,6 +1,6 @@
 <div class="crm-modal" id="scheduleTemplateModal">
     <div class="crm-modal__overlay" onclick="closeScheduleTemplateModal()"></div>
-    <div class="crm-modal__content">
+    <div class="crm-modal__content crm-modal__content--lg">
         <div class="crm-modal__header"><h3>Добавить стандартное время</h3><button class="crm-modal__close" type="button" onclick="closeScheduleTemplateModal()">×</button></div>
         <div class="crm-modal__body">
             <form id="scheduleTemplateForm" hx-post="{% if selected_group %}{% url 'crm:group_template_save' selected_group.id %}{% endif %}" hx-target="#scheduleTemplateModal" hx-swap="outerHTML">

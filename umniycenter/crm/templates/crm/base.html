@@ -8,6 +8,17 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        (function () {
+            try {
+                var savedTheme = localStorage.getItem('crm-theme');
+                var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                document.documentElement.dataset.theme = savedTheme || (prefersDark ? 'dark' : 'light');
+            } catch (error) {
+                document.documentElement.dataset.theme = 'light';
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="{% static 'crm/css/crm.css' %}">
     <script src="{% static 'vendor/htmx/htmx.min.js' %}" defer></script>
     <script src="{% static 'vendor/alpine/alpine.min.js' %}" defer></script>
@@ -187,6 +198,15 @@
                     <input type="search" placeholder="Поиск по CRM" aria-label="Поиск по CRM">
                     <button type="submit">Найти</button>
                 </form>
+                <button class="crm-theme-toggle" type="button" data-theme-toggle aria-label="Переключить темную тему" title="Переключить тему" aria-pressed="false">
+                    <svg class="crm-theme-toggle__icon crm-theme-toggle__icon--moon" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.7 6.7 0 0 0 9.8 9.8Z"/>
+                    </svg>
+                    <svg class="crm-theme-toggle__icon crm-theme-toggle__icon--sun" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="12" cy="12" r="4"/>
+                        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+                    </svg>
+                </button>
                 <div class="crm-user-menu">
                     <button class="crm-admin-chip" type="button" aria-expanded="false" aria-haspopup="true">
                         <span class="crm-admin-chip__avatar">{{ request.user.first_name|first }}{{ request.user.last_name|first }}</span>
