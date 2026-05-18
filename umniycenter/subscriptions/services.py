@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.db.models import F
 from django.utils import timezone
 
 from .models import Subscription, Tariff, SubscriptionLog
@@ -97,3 +98,84 @@ class SubscriptionService:
                 created_by=created_by,
             )
         return refunded
+
+
+class SubscriptionMonitoringService:
+    """Ежедневный контроль сроков, остатков и статусов абонементов."""
+
+    LOW_LESSONS_THRESHOLD = 2
+    EXPIRING_DAYS_THRESHOLD = 7
+
+    @classmethod
+    def get_risk_queryset(cls, today=None):
+        today = today or timezone.now().date()
+        return {
+            'low_lessons': Subscription.objects.select_related('student', 'parent', 'tariff', 'tariff__course').filter(
+                status='active',
+                lessons_used__gte=F('lessons_total') - cls.LOW_LESSONS_THRESHOLD,
+            ),
+            'expiring_soon': Subscription.objects.select_related('student', 'parent', 'tariff', 'tariff__course').filter(
+                status='active',
+                end_date__gte=today,
+                end_date__lte=today + timezone.timedelta(days=cls.EXPIRING_DAYS_THRESHOLD),
+            ),
+            'expired_by_date': Subscription.objects.select_related('student', 'parent', 'tariff', 'tariff__course').filter(
+                status='active',
+                end_date__lt=today,
+            ),
+            'exhausted_by_lessons': Subscription.objects.select_related('student', 'parent', 'tariff', 'tariff__course').filter(
+                status='active',
+                allow_negative_lessons=False,
+                lessons_used__gte=F('lessons_total'),
+            ),
+            'pending_payment': Subscription.objects.select_related('student', 'parent', 'tariff', 'tariff__course').filter(
+                status='pending',
+            ),
+            'negative_balance': Subscription.objects.select_related('student', 'parent', 'tariff', 'tariff__course').filter(
+                status='active',
+                lessons_used__gt=F('lessons_total'),
+            ),
+        }
+
+    @classmethod
+    @transaction.atomic
+    def run_daily_check(cls, created_by=None, today=None, write_logs=True):
+        today = today or timezone.now().date()
+        risks = cls.get_risk_queryset(today=today)
+        expired_ids = list(risks['expired_by_date'].values_list('id', flat=True))
+        exhausted_ids = list(risks['exhausted_by_lessons'].values_list('id', flat=True))
+        expired_count = 0
+        exhausted_count = 0
+
+        for subscription in Subscription.objects.select_for_update().filter(id__in=expired_ids):
+            if subscription.status != 'active':
+                continue
+            subscription.status = 'expired'
+            subscription.save(update_fields=['status', 'updated_at'])
+            expired_count += 1
+            if write_logs:
+                SubscriptionLog.log(subscription, 'expired', comment='Автоматическая проверка: истек срок действия', created_by=created_by)
+            subscription.student.update_active_status()
+            subscription.parent.update_active_status()
+
+        for subscription in Subscription.objects.select_for_update().filter(id__in=exhausted_ids).exclude(id__in=expired_ids):
+            if subscription.status != 'active':
+                continue
+            subscription.status = 'exhausted'
+            subscription.save(update_fields=['status', 'updated_at'])
+            exhausted_count += 1
+            if write_logs:
+                SubscriptionLog.log(subscription, 'exhausted', comment='Автоматическая проверка: занятия закончились', created_by=created_by)
+            subscription.student.update_active_status()
+            subscription.parent.update_active_status()
+
+        refreshed_risks = cls.get_risk_queryset(today=today)
+        return {
+            'expired_updated': expired_count,
+            'exhausted_updated': exhausted_count,
+            'low_lessons': refreshed_risks['low_lessons'].count(),
+            'expiring_soon': refreshed_risks['expiring_soon'].count(),
+            'pending_payment': refreshed_risks['pending_payment'].count(),
+            'negative_balance': refreshed_risks['negative_balance'].count(),
+            'checked_at': timezone.now(),
+        }

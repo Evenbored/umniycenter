@@ -2101,6 +2101,22 @@ def subscriptions_table_partial(request):
 
 @login_required
 @admin_required
+@require_http_methods(["POST"])
+def subscriptions_check_partial(request):
+    from subscriptions.services import SubscriptionMonitoringService
+
+    result = SubscriptionMonitoringService.run_daily_check(created_by=request.user)
+    message = (
+        f"Проверка завершена: истекших обновлено — {result['expired_updated']}, "
+        f"исчерпанных — {result['exhausted_updated']}."
+    )
+    response = render(request, "crm/partials/subscriptions_table.html", {**get_subscriptions_context(request), "monitoring_result": result})
+    response["HX-Trigger"] = hx_trigger("crm:refresh-stats", toast=crm_toast(message, title="Абонементы проверены"))
+    return response
+
+
+@login_required
+@admin_required
 def subscription_drawer_partial(request, subscription_id):
     subscription = get_subscription_for_drawer(subscription_id)
     return render(request, "crm/partials/subscription_drawer.html", get_subscriptions_context(request, subscription=subscription))

@@ -6,6 +6,15 @@
     <div class="crm-checkbox-filter"><span>Просрочены: <strong>{{ expired_count }}</strong></span></div>
 </section>
 
+{% if monitoring_result %}
+    <section class="crm-quick-filters">
+        <div class="crm-checkbox-filter"><span>Проверено: <strong>{{ monitoring_result.checked_at|date:'d.m.Y H:i' }}</strong></span></div>
+        <div class="crm-checkbox-filter"><span>Переведено в истекшие: <strong>{{ monitoring_result.expired_updated }}</strong></span></div>
+        <div class="crm-checkbox-filter"><span>Переведено в исчерпанные: <strong>{{ monitoring_result.exhausted_updated }}</strong></span></div>
+        <div class="crm-checkbox-filter"><span>В минусе: <strong>{{ monitoring_result.negative_balance }}</strong></span></div>
+    </section>
+{% endif %}
+
 <div class="crm-data-panel__header">
     <div>
         <strong id="subscriptionsCount">{{ subscriptions_count }}</strong>

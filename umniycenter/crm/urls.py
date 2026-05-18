@@ -60,6 +60,7 @@ urlpatterns = [
     path('crm/tariffs/<int:tariff_id>/save/', views.tariff_save_partial, name='tariff_save_edit'),
     path('crm/subscriptions/', views.subscriptions_view, name='subscriptions'),
     path('crm/subscriptions/table/', views.subscriptions_table_partial, name='subscriptions_table'),
+    path('crm/subscriptions/check/', views.subscriptions_check_partial, name='subscriptions_check'),
     path('crm/subscriptions/<int:subscription_id>/drawer/', views.subscription_drawer_partial, name='subscription_drawer'),
     path('crm/subscriptions/<int:subscription_id>/freeze/', views.subscription_freeze_partial, name='subscription_freeze'),
     path('crm/subscriptions/<int:subscription_id>/unfreeze/', views.subscription_unfreeze_partial, name='subscription_unfreeze'),

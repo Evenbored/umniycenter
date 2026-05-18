@@ -33,6 +33,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='subscriptionlog',
             name='action',
-            field=models.CharField(choices=[('created', 'Создан'), ('activated', 'Активирован'), ('deduct', 'Списаны занятия'), ('refund', 'Возвращены занятия'), ('freeze', 'Заморожен'), ('unfreeze', 'Разморожен'), ('canceled', 'Отменен'), ('completed', 'Завершен вручную'), ('group_assigned', 'Привязан к группе'), ('manual_group_add', 'Ручное добавление в группу'), ('negative_limit_changed', 'Изменен лимит минуса')], max_length=40, verbose_name='Действие'),
+            field=models.CharField(choices=[('created', 'Создан'), ('activated', 'Активирован'), ('deduct', 'Списаны занятия'), ('refund', 'Возвращены занятия'), ('freeze', 'Заморожен'), ('unfreeze', 'Разморожен'), ('canceled', 'Отменен'), ('completed', 'Завершен вручную'), ('expired', 'Истек срок'), ('exhausted', 'Исчерпан'), ('group_assigned', 'Привязан к группе'), ('manual_group_add', 'Ручное добавление в группу'), ('negative_limit_changed', 'Изменен лимит минуса')], max_length=40, verbose_name='Действие'),
         ),
     ]

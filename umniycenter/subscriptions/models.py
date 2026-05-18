@@ -381,6 +381,8 @@ class SubscriptionLog(models.Model):
         ('unfreeze', 'Разморожен'),
         ('canceled', 'Отменен'),
         ('completed', 'Завершен вручную'),
+        ('expired', 'Истек срок'),
+        ('exhausted', 'Исчерпан'),
         ('group_assigned', 'Привязан к группе'),
         ('manual_group_add', 'Ручное добавление в группу'),
         ('negative_limit_changed', 'Изменен лимит минуса'),
