@@ -8,6 +8,11 @@ def main_page(request):
         form = ParticipantRequestForm(request.POST)
         if form.is_valid():
             particRequest = form.save()
+            try:
+                from sales.models import Lead
+                Lead.from_participant_request(particRequest)
+            except Exception:
+                pass
             messages.success(
                 request,
                 f'Спасибо за заявку! Мы свяжемся с вами по номеру {particRequest.phone} в ближайшее время.'

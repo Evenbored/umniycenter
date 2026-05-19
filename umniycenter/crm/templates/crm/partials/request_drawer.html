@@ -48,6 +48,21 @@
                     <div class="crm-info-item"><span class="crm-info-label">Статус</span><span id="drawerStatus">{% if selected_request.checked %}<span class="crm-status-badge crm-status-badge--processed">Обработана</span>{% else %}<span class="crm-status-badge crm-status-badge--new">Новая</span>{% endif %}</span></div>
                 </div>
             </div>
+
+            <form class="crm-drawer-section crm-student-edit-form" hx-post="{% url 'crm:request_lead_update' selected_request.id %}" hx-target="#requestDrawerContent" hx-swap="outerHTML">
+                {% csrf_token %}
+                <h4>Воронка продаж</h4>
+                <div class="crm-form-grid">
+                    <label class="crm-form-field"><span>Статус лида</span><select name="lead_status" required>{% for value, label in lead_status_choices %}<option value="{{ value }}" {% if selected_lead.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+                    <label class="crm-form-field"><span>Ответственный</span><select name="assigned_to"><option value="">Не назначен</option>{% for admin in admins %}<option value="{{ admin.id }}" {% if selected_lead.assigned_to_id == admin.id %}selected{% endif %}>{{ admin.get_full_name|default:admin.username }}</option>{% endfor %}</select></label>
+                    <label class="crm-form-field"><span>Следующий контакт</span><input type="datetime-local" name="next_contact_at" value="{{ selected_lead.next_contact_at|date:'Y-m-d\TH:i' }}"></label>
+                    <label class="crm-form-field"><span>Причина отказа</span><input type="text" name="lost_reason" value="{{ selected_lead.lost_reason }}" placeholder="Если клиент отказался"></label>
+                    <label class="crm-form-field crm-form-field--full"><span>Комментарий</span><textarea name="comment" rows="3" placeholder="Что обсудили, ожидания, удобное время, следующий шаг">{{ selected_lead.comment }}</textarea></label>
+                </div>
+                <div style="display:flex; justify-content:flex-end; margin-top:14px;">
+                    <button class="crm-btn crm-btn--primary" type="submit">Сохранить воронку</button>
+                </div>
+            </form>
         {% endif %}
         <div class="crm-form-alert" {% if not form_error %}hidden{% endif %}>{{ form_error|default:'' }}</div>
     </div>

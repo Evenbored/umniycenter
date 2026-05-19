@@ -45,6 +45,14 @@ def mark_request_processed(request, pk):
     
     participant_request.checked = True
     participant_request.save()
+    try:
+        from sales.models import Lead, LeadStatus
+        lead = Lead.from_participant_request(participant_request, assigned_to=request.user)
+        lead.status = LeadStatus.CONTACTED
+        lead.assigned_to = request.user
+        lead.save(update_fields=['status', 'assigned_to', 'updated_at'])
+    except Exception:
+        pass
     
     serializer = ParticipantRequestSerializer(participant_request)
     return Response({
@@ -84,6 +92,12 @@ def create_student_from_request(request, pk):
             # Отмечаем заявку как обработанную
             participant_request.checked = True
             participant_request.save(update_fields=['checked'])
+            try:
+                from sales.models import Lead
+                lead = Lead.from_participant_request(participant_request, assigned_to=request.user)
+                lead.mark_converted(student=result["student"], parent=result.get("parent"))
+            except Exception:
+                pass
 
             return Response({
                 "message": "Ученик и родитель успешно созданы",

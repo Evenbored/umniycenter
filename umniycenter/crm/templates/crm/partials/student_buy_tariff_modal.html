@@ -1,4 +1,4 @@
-<div class="crm-modal" id="buyTariffModal">
+<div class="crm-modal{% if selected_student %} is-open{% endif %}" id="buyTariffModal">
     <div class="crm-modal__overlay" onclick="closeBuyTariffModal()"></div>
     <div class="crm-modal__content crm-modal__content--md">
         <div class="crm-modal__header">
@@ -10,42 +10,44 @@
                 {% csrf_token %}
                 <div class="crm-form-field">
                     <label>Курс</label>
-                    <select name="course" required hx-get="{% if selected_student %}{% url 'crm:student_buy_tariff_modal' selected_student.id %}{% endif %}" hx-trigger="change" hx-target="#buyTariffModal" hx-swap="outerHTML" hx-include="this">
+                    <select name="course" id="buyTariffCourse" required data-selected="{{ selected_course_id }}">
                         <option value="">Выберите курс</option>
                         {% for course in courses %}<option value="{{ course.id }}" {% if selected_course_id == course.id|stringformat:'s' %}selected{% endif %}>{{ course.name }}</option>{% endfor %}
                     </select>
                 </div>
                 <div class="crm-form-field">
                     <label>Тариф</label>
-                    <select name="tariff_id" required hx-get="{% if selected_student %}{% url 'crm:student_buy_tariff_modal' selected_student.id %}{% endif %}" hx-trigger="change" hx-target="#buyTariffModal" hx-swap="outerHTML" hx-include="#buyTariffForm">
-                        <option value="">{% if selected_course_id %}Выберите тариф{% else %}Сначала выберите курс{% endif %}</option>
-                        {% for tariff in tariffs %}<option value="{{ tariff.id }}" {% if selected_tariff_id == tariff.id|stringformat:'s' %}selected{% endif %}>{{ tariff.name }} · {{ tariff.get_subscription_type_display }}{% if tariff.is_trial %} (Пробный){% endif %} - {{ tariff.price|floatformat:0 }} руб.</option>{% endfor %}
+                    <select name="tariff_id" id="buyTariffSelect" required data-selected="{{ selected_tariff_id }}">
+                        <option value="">Сначала выберите курс</option>
+                        {% for tariff in tariffs %}
+                            <option value="{{ tariff.id }}" data-course="{{ tariff.course_id }}" data-type="{{ tariff.subscription_type }}" data-type-label="{{ tariff.get_subscription_type_display }}" data-lessons="{{ tariff.lessons_count }}" data-validity="{{ tariff.validity_days }}" data-price="{{ tariff.price|floatformat:0 }}" data-description="{{ tariff.description|default:''|escape }}" {% if selected_tariff_id == tariff.id|stringformat:'s' %}selected{% endif %}>{{ tariff.name }} · {{ tariff.get_subscription_type_display }}{% if tariff.is_trial %} (Пробный){% endif %} - {{ tariff.price|floatformat:0 }} руб.</option>
+                        {% endfor %}
                     </select>
                 </div>
-                {% if selected_tariff %}
-                    <div id="tariffInfo" class="crm-tariff-info">
-                        <div class="crm-tariff-info__row"><span class="crm-tariff-info__label">Тип:</span><span class="crm-tariff-info__value">{{ selected_tariff.get_subscription_type_display }}</span></div>
-                        <div class="crm-tariff-info__row"><span class="crm-tariff-info__label">Занятий:</span><span class="crm-tariff-info__value">{{ selected_tariff.lessons_count }}</span></div>
-                        <div class="crm-tariff-info__row"><span class="crm-tariff-info__label">Срок действия:</span><span class="crm-tariff-info__value">{{ selected_tariff.validity_days }} дней</span></div>
-                        <div class="crm-tariff-info__row"><span class="crm-tariff-info__label">Цена:</span><span class="crm-tariff-info__value">{{ selected_tariff.price|floatformat:0 }} руб.</span></div>
-                        {% if selected_tariff.description %}<div style="margin-top: 12px; font-size: 13px; color: var(--crm-muted);">{{ selected_tariff.description }}</div>{% endif %}
-                    </div>
-                {% endif %}
 
-                <div class="crm-form-field" style="margin-top: 20px;">
-                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;"><input type="checkbox" name="add_to_group" style="width: auto; margin: 0;" {% if add_to_group %}checked{% endif %} hx-get="{% if selected_student %}{% url 'crm:student_buy_tariff_modal' selected_student.id %}{% endif %}" hx-trigger="change" hx-target="#buyTariffModal" hx-swap="outerHTML" hx-include="#buyTariffForm"><span>Добавить в группу сразу (опционально)</span></label>
+                <div id="tariffInfo" class="crm-tariff-info" hidden>
+                    <div class="crm-tariff-info__row"><span class="crm-tariff-info__label">Тип:</span><span class="crm-tariff-info__value" data-tariff-type></span></div>
+                    <div class="crm-tariff-info__row"><span class="crm-tariff-info__label">Занятий:</span><span class="crm-tariff-info__value" data-tariff-lessons></span></div>
+                    <div class="crm-tariff-info__row"><span class="crm-tariff-info__label">Срок действия:</span><span class="crm-tariff-info__value" data-tariff-validity></span></div>
+                    <div class="crm-tariff-info__row"><span class="crm-tariff-info__label">Цена:</span><span class="crm-tariff-info__value" data-tariff-price></span></div>
+                    <div data-tariff-description style="margin-top: 12px; font-size: 13px; color: var(--crm-muted);" hidden></div>
+                </div>
+                <div id="tariffHint" class="crm-tariff-info">
+                    <div style="font-size: 13px; color: var(--crm-muted);">Выберите курс и тариф, чтобы увидеть параметры абонемента.</div>
                 </div>
 
-                {% if add_to_group or selected_tariff.subscription_type == 'group' %}
-                    <div class="crm-form-field" id="groupSelectContainer" style="margin-top: 16px;">
-                        <label>Группа</label>
-                        <select name="group_id" {% if selected_tariff.subscription_type == 'group' %}required{% endif %}>
-                            <option value="">Выберите группу</option>
-                            {% for group in groups %}<option value="{{ group.id }}" {% if group_id == group.id|stringformat:'s' %}selected{% endif %}>{{ group.number }} - {{ group.teacher|default:'Без преподавателя' }}</option>{% endfor %}
-                        </select>
-                        <small style="color: var(--crm-muted); font-size: 12px; margin-top: 4px; display: block;">Показаны только группы выбранного курса</small>
-                    </div>
-                {% endif %}
+                <div class="crm-form-field" style="margin-top: 20px;">
+                    <label class="crm-buy-tariff-checkbox"><input type="checkbox" name="add_to_group" id="buyTariffAddToGroup" {% if add_to_group %}checked{% endif %}><span>Добавить в группу сразу (опционально)</span></label>
+                </div>
+
+                <div class="crm-form-field" id="groupSelectContainer" style="margin-top: 16px;" hidden>
+                    <label>Группа</label>
+                    <select name="group_id" id="buyTariffGroup" data-selected="{{ group_id }}">
+                        <option value="">Выберите группу</option>
+                        {% for group in groups %}<option value="{{ group.id }}" data-course="{{ group.course_id }}" {% if group_id == group.id|stringformat:'s' %}selected{% endif %}>{{ group.number }} - {{ group.teacher|default:'Без преподавателя' }}</option>{% endfor %}
+                    </select>
+                    <small style="color: var(--crm-muted); font-size: 12px; margin-top: 4px; display: block;">Показаны только группы выбранного курса</small>
+                </div>
 
                 <div class="crm-form-field" style="margin-top: 20px;">
                     <label>Способ оплаты *</label>
@@ -66,3 +68,73 @@
         </div>
     </div>
 </div>
+
+<script>
+    (function () {
+        const modal = document.getElementById('buyTariffModal');
+        if (!modal) return;
+        const courseSelect = modal.querySelector('#buyTariffCourse');
+        const tariffSelect = modal.querySelector('#buyTariffSelect');
+        const groupSelect = modal.querySelector('#buyTariffGroup');
+        const addToGroup = modal.querySelector('#buyTariffAddToGroup');
+        const groupContainer = modal.querySelector('#groupSelectContainer');
+        const tariffInfo = modal.querySelector('#tariffInfo');
+        const tariffHint = modal.querySelector('#tariffHint');
+
+        function filterOptions(select, courseId) {
+            Array.from(select.options).forEach((option) => {
+                if (!option.value) {
+                    option.hidden = false;
+                    return;
+                }
+                option.hidden = Boolean(courseId) && option.dataset.course !== courseId;
+            });
+        }
+
+        function selectedVisible(select) {
+            return select.selectedOptions.length && !select.selectedOptions[0].hidden;
+        }
+
+        function updateTariffInfo() {
+            const option = tariffSelect.selectedOptions[0];
+            const hasTariff = option && option.value && !option.hidden;
+            tariffInfo.hidden = !hasTariff;
+            tariffHint.hidden = hasTariff;
+            if (!hasTariff) return;
+            tariffInfo.querySelector('[data-tariff-type]').textContent = option.dataset.typeLabel || '-';
+            tariffInfo.querySelector('[data-tariff-lessons]').textContent = option.dataset.lessons || '-';
+            tariffInfo.querySelector('[data-tariff-validity]').textContent = `${option.dataset.validity || '-'} дней`;
+            tariffInfo.querySelector('[data-tariff-price]').textContent = `${option.dataset.price || '0'} руб.`;
+            const description = tariffInfo.querySelector('[data-tariff-description]');
+            description.textContent = option.dataset.description || '';
+            description.hidden = !option.dataset.description;
+        }
+
+        function updateGroupVisibility() {
+            const option = tariffSelect.selectedOptions[0];
+            const isGroupTariff = option && option.dataset.type === 'group' && !option.hidden;
+            const shouldShow = Boolean(addToGroup.checked || isGroupTariff);
+            groupContainer.hidden = !shouldShow;
+            groupSelect.required = Boolean(isGroupTariff);
+            if (!shouldShow) groupSelect.value = '';
+        }
+
+        function refresh() {
+            const courseId = courseSelect.value;
+            filterOptions(tariffSelect, courseId);
+            filterOptions(groupSelect, courseId);
+            tariffSelect.options[0].textContent = courseId ? 'Выберите тариф' : 'Сначала выберите курс';
+            groupSelect.options[0].textContent = courseId ? 'Выберите группу' : 'Сначала выберите курс';
+            if (!selectedVisible(tariffSelect)) tariffSelect.value = '';
+            if (!selectedVisible(groupSelect)) groupSelect.value = '';
+            updateTariffInfo();
+            updateGroupVisibility();
+        }
+
+        courseSelect.addEventListener('change', refresh);
+        tariffSelect.addEventListener('change', refresh);
+        groupSelect.addEventListener('change', refresh);
+        addToGroup.addEventListener('change', refresh);
+        refresh();
+    })();
+</script>

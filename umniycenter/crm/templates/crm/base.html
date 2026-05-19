@@ -124,14 +124,24 @@
                     <span class="crm-nav__icon">D</span>
                     <span>Главная</span>
                 </a>
-                <a class="crm-nav__item {% if url_name == 'requests' %}is-active{% endif %}" href="{% url 'crm:requests' %}">
-                    <span class="crm-nav__icon">R</span>
-                    <span>Заявки</span>
-                    <span class="crm-nav__badge" data-nav-count="requests">0</span>
-                </a>
+                <div class="crm-nav__dropdown {% if url_name == 'requests' or url_name == 'leads' %}is-open{% endif %}">
+                    <div class="crm-nav__item crm-nav__item--dropdown {% if url_name == 'requests' or url_name == 'leads' %}is-active{% endif %}">
+                        <span class="crm-nav__icon">S</span>
+                        <span>Продажи</span>
+                        <svg class="crm-nav__arrow" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+                    </div>
+                    <div class="crm-nav__submenu">
+                        <a class="crm-nav__subitem {% if url_name == 'requests' %}is-active{% endif %}" href="{% url 'crm:requests' %}">
+                            <span>Заявки с сайта</span>
+                            <span class="crm-nav__badge" data-nav-count="requests">0</span>
+                        </a>
+                        <a class="crm-nav__subitem {% if url_name == 'leads' %}is-active{% endif %}" href="{% url 'crm:leads' %}">
+                            <span>Воронка лидов</span>
+                        </a>
+                    </div>
+                </div>
                 
-                <!-- Выпадающий список Пользователи -->
-<div class="crm-nav__dropdown">
+                <div class="crm-nav__dropdown {% if url_name == 'students' or url_name == 'parents' or url_name == 'teachers' %}is-open{% endif %}">
                     <div class="crm-nav__item crm-nav__item--dropdown {% if url_name == 'students' or url_name == 'parents' or url_name == 'teachers' %}is-active{% endif %}">
                         <span class="crm-nav__icon">U</span>
                         <span>Пользователи</span>
@@ -155,24 +165,36 @@
                     </div>
                 </div>
                 
-                <a class="crm-nav__item {% if url_name == 'groups' %}is-active{% endif %}" href="{% url 'crm:groups' %}">
-                    <span class="crm-nav__icon">G</span>
-                    <span>Группы</span>
-                    <span class="crm-nav__badge" data-nav-count="groups">0</span>
-                </a>
-                <a class="crm-nav__item {% if url_name == 'tariffs' %}is-active{% endif %}" href="{% url 'crm:tariffs' %}">
-                    <span class="crm-nav__icon">T</span>
-                    <span>Тарифы</span>
-                </a>
-                <a class="crm-nav__item {% if url_name == 'subscriptions' %}is-active{% endif %}" href="{% url 'crm:subscriptions' %}">
-                    <span class="crm-nav__icon">A</span>
-                    <span>Абонементы</span>
-                </a>
-                <a class="crm-nav__item  {% if url_name == 'courses' %}is-active{% endif %}" href="{% url "crm:courses" %}">
-                    <span class="crm-nav__icon">C</span>
-                    <span>Курсы</span>
-                </a>
-                <div class="crm-nav__dropdown">
+                <div class="crm-nav__dropdown {% if url_name == 'groups' or url_name == 'courses' %}is-open{% endif %}">
+                    <div class="crm-nav__item crm-nav__item--dropdown {% if url_name == 'groups' or url_name == 'courses' %}is-active{% endif %}">
+                        <span class="crm-nav__icon">E</span>
+                        <span>Обучение</span>
+                        <svg class="crm-nav__arrow" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+                    </div>
+                    <div class="crm-nav__submenu">
+                        <a class="crm-nav__subitem {% if url_name == 'groups' %}is-active{% endif %}" href="{% url 'crm:groups' %}">
+                            <span>Группы</span>
+                            <span class="crm-nav__badge" data-nav-count="groups">0</span>
+                        </a>
+                        <a class="crm-nav__subitem {% if url_name == 'courses' %}is-active{% endif %}" href="{% url "crm:courses" %}">
+                            <span>Курсы</span>
+                        </a>
+                        <a class="crm-nav__subitem is-muted" href="#"><span>Домашние задания</span><span class="crm-nav__soon">скоро</span></a>
+                    </div>
+                </div>
+                <div class="crm-nav__dropdown {% if url_name == 'tariffs' or url_name == 'subscriptions' or url_name == 'payments' %}is-open{% endif %}">
+                    <div class="crm-nav__item crm-nav__item--dropdown {% if url_name == 'tariffs' or url_name == 'subscriptions' or url_name == 'payments' %}is-active{% endif %}">
+                        <span class="crm-nav__icon">₽</span>
+                        <span>Финансы</span>
+                        <svg class="crm-nav__arrow" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+                    </div>
+                    <div class="crm-nav__submenu">
+                        <a class="crm-nav__subitem {% if url_name == 'tariffs' %}is-active{% endif %}" href="{% url 'crm:tariffs' %}"><span>Тарифы</span></a>
+                        <a class="crm-nav__subitem {% if url_name == 'subscriptions' %}is-active{% endif %}" href="{% url 'crm:subscriptions' %}"><span>Абонементы</span></a>
+                        <a class="crm-nav__subitem {% if url_name == 'payments' %}is-active{% endif %}" href="{% url 'crm:payments' %}"><span>Платежи</span><span class="crm-nav__badge" data-nav-count="payments">0</span></a>
+                    </div>
+                </div>
+                <div class="crm-nav__dropdown {% if url_name == 'schedule' or url_name == 'schedule_today' %}is-open{% endif %}">
                     <div class="crm-nav__item crm-nav__item--dropdown {% if url_name == 'schedule' or url_name == 'schedule_today' %}is-active{% endif %}">
                         <span class="crm-nav__icon">L</span>
                         <span>Расписание</span>
@@ -193,15 +215,6 @@
                     <span class="crm-nav__icon">M</span>
                     <span>Сообщения</span>
                     <span class="crm-nav__badge" data-nav-count="messages">0</span>
-                </a>
-                <a class="crm-nav__item is-muted" href="#">
-                    <span class="crm-nav__icon">H</span>
-                    <span>Домашние задания</span>
-                </a>
-                <a class="crm-nav__item {% if url_name == 'payments' %}is-active{% endif %}" href="{% url 'crm:payments' %}">
-                    <span class="crm-nav__icon">P</span>
-                    <span>Платежи</span>
-                    <span class="crm-nav__badge" data-nav-count="payments">0</span>
                 </a>
                 <a class="crm-nav__item is-muted" href="#">
                     <span class="crm-nav__icon">N</span>

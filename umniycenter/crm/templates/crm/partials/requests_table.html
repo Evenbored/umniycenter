@@ -1,3 +1,10 @@
+<section class="crm-quick-filters">
+    <div class="crm-checkbox-filter"><span>Новые лиды: <strong>{{ lead_new_count }}</strong></span></div>
+    <div class="crm-checkbox-filter"><span>В работе: <strong>{{ lead_work_count }}</strong></span></div>
+    <div class="crm-checkbox-filter"><span>Конвертированы: <strong>{{ lead_converted_count }}</strong></span></div>
+    <div class="crm-checkbox-filter"><span>Отказы: <strong>{{ lead_lost_count }}</strong></span></div>
+</section>
+
 <div class="crm-data-panel__header">
     <div>
         <strong id="requestsCount">{{ requests_count }}</strong>
@@ -25,6 +32,7 @@
                 <th>Источник</th>
                 <th>Дата</th>
                 <th>Статус</th>
+                <th>Воронка</th>
                 <th></th>
             </tr>
         </thead>
@@ -50,6 +58,14 @@
                             {% endif %}
                         </td>
                         <td>
+                            {% if participant_request.crm_lead %}
+                                <span class="crm-group-chip">{{ participant_request.crm_lead.get_status_display }}</span>
+                                {% if participant_request.crm_lead.assigned_to %}<div class="crm-table-meta">{{ participant_request.crm_lead.assigned_to.get_full_name|default:participant_request.crm_lead.assigned_to.username }}</div>{% endif %}
+                            {% else %}
+                                <span class="crm-table-meta">Лид не создан</span>
+                            {% endif %}
+                        </td>
+                        <td>
                             <div class="crm-table-actions">
                                 <button type="button" hx-get="{% url 'crm:request_drawer' participant_request.id %}" hx-target="#requestDrawerContent" hx-swap="outerHTML" hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('requestDrawer').classList.add('is-open')" title="Открыть">
                                     <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -62,7 +78,7 @@
                     </tr>
                 {% endfor %}
             {% else %}
-                <tr><td colspan="9" class="crm-table-empty">Заявок не найдено. Попробуйте изменить фильтры.</td></tr>
+                <tr><td colspan="10" class="crm-table-empty">Заявок не найдено. Попробуйте изменить фильтры.</td></tr>
             {% endif %}
         </tbody>
     </table>

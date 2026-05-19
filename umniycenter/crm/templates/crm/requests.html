@@ -45,6 +45,10 @@
             <option value="new" {% if request.GET.status|default:'new' == 'new' %}selected{% endif %}>Новые</option>
             <option value="processed" {% if request.GET.status == 'processed' %}selected{% endif %}>Обработанные</option>
         </select>
+        <select id="requestsLeadStatusFilter" name="lead_status" class="crm-select" hx-get="{% url 'crm:requests_table' %}" hx-trigger="change" hx-target="#requestsTableHost" hx-swap="innerHTML" hx-include="#requestsSearch, .crm-toolbar__filters">
+            <option value="">Все статусы лида</option>
+            {% for value, label in lead_status_choices %}<option value="{{ value }}" {% if request.GET.lead_status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
         <select id="requestsSortFilter" name="sort" class="crm-select" hx-get="{% url 'crm:requests_table' %}" hx-trigger="change" hx-target="#requestsTableHost" hx-swap="innerHTML" hx-include="#requestsSearch, .crm-toolbar__filters">
             <option value="-created" {% if request.GET.sort|default:'-created' == '-created' %}selected{% endif %}>Сначала новые</option>
             <option value="created" {% if request.GET.sort == 'created' %}selected{% endif %}>Сначала старые</option>

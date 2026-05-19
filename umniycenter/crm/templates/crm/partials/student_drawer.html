@@ -44,7 +44,7 @@
             <div class="crm-drawer-section" x-bind:hidden="editing">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                     <h4 style="margin: 0;">Подписки</h4>
-                    <button class="crm-btn crm-btn--primary crm-btn--sm" type="button" hx-get="{% url 'crm:student_buy_tariff_modal' selected_student.id %}" hx-target="#buyTariffModal" hx-swap="outerHTML" hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('buyTariffModal').classList.add('is-open')">
+                    <button class="crm-btn crm-btn--primary crm-btn--sm" type="button" hx-get="{% url 'crm:student_buy_tariff_modal' selected_student.id %}" hx-target="#buyTariffModal" hx-swap="outerHTML" hx-on::after-swap="document.getElementById('buyTariffModal')?.classList.add('is-open')">
                         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
                         Купить тариф
                     </button>

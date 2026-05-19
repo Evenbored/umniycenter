@@ -1,0 +1,68 @@
+<div class="crm-drawer__panel crm-drawer__panel--lg" id="leadDrawerContent">
+    <header class="crm-drawer__header">
+        <div>
+            <h3>{% if selected_lead %}Лид #{{ selected_lead.id }}{% else %}Лид{% endif %}</h3>
+            <p>{% if selected_lead %}{{ selected_lead.get_status_display }} · {{ selected_lead.created_at|date:'d.m.Y H:i' }}{% endif %}</p>
+        </div>
+        <button class="crm-btn-icon" type="button" onclick="closeLeadDrawer()" aria-label="Закрыть"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </header>
+
+    <div class="crm-drawer__content">
+        {% if selected_lead %}
+            <div class="crm-drawer-section">
+                <h4>Клиент</h4>
+                <div class="crm-info-grid">
+                    <div class="crm-info-item"><span class="crm-info-label">Ребенок</span><strong>{{ selected_lead.child_fio }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Возраст</span><strong>{{ selected_lead.age|default:'-' }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Родитель</span><strong>{{ selected_lead.parent_fio }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Контакты</span><strong>{{ selected_lead.phone }}{% if selected_lead.email %} · {{ selected_lead.email }}{% endif %}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Источник</span><strong>{{ selected_lead.get_source_display|default:'-' }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Создан</span><strong>{{ selected_lead.created_at|date:'d.m.Y H:i' }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Следующий контакт</span><strong>{% if selected_lead.is_contact_overdue %}Просрочен: {% endif %}{{ selected_lead.next_contact_at|date:'d.m.Y H:i'|default:'-' }}</strong></div>
+                    <div class="crm-info-item"><span class="crm-info-label">Последний контакт</span><strong>{{ selected_lead.last_contact_at|date:'d.m.Y H:i'|default:'-' }}</strong></div>
+                </div>
+            </div>
+
+            <div class="crm-drawer-section">
+                <h4>Курсы</h4>
+                <div class="crm-tags">
+                    {% for course in selected_lead.courses.all %}<span class="crm-tag">{{ course.name }}</span>{% empty %}<span class="crm-tag">Не указаны</span>{% endfor %}
+                </div>
+            </div>
+
+            <form class="crm-drawer-section crm-student-edit-form" hx-post="{% url 'crm:lead_update' selected_lead.id %}" hx-target="#leadDrawerContent" hx-swap="outerHTML">
+                {% csrf_token %}
+                <h4>Работа с лидом</h4>
+                <div class="crm-lead-quick-actions">
+                    <button type="button" hx-post="{% url 'crm:lead_status' selected_lead.id %}" hx-target="#leadDrawerContent" hx-swap="outerHTML" hx-vals='{"lead_status": "in_progress"}'>В работу</button>
+                    <button type="button" hx-post="{% url 'crm:lead_status' selected_lead.id %}" hx-target="#leadDrawerContent" hx-swap="outerHTML" hx-vals='{"lead_status": "no_answer"}'>Не дозвонились</button>
+                    <button type="button" hx-post="{% url 'crm:lead_status' selected_lead.id %}" hx-target="#leadDrawerContent" hx-swap="outerHTML" hx-vals='{"lead_status": "waiting_decision"}'>Клиент думает</button>
+                    <button type="button" hx-post="{% url 'crm:lead_status' selected_lead.id %}" hx-target="#leadDrawerContent" hx-swap="outerHTML" hx-vals='{"lead_status": "trial_scheduled"}'>Пробное назначено</button>
+                </div>
+                <div class="crm-form-grid">
+                    <label class="crm-form-field"><span>Статус</span><select name="lead_status" required>{% for value, label in lead_status_choices %}<option value="{{ value }}" {% if selected_lead.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+                    <label class="crm-form-field"><span>Ответственный</span><select name="assigned_to"><option value="">Не назначен</option>{% for admin in admins %}<option value="{{ admin.id }}" {% if selected_lead.assigned_to_id == admin.id %}selected{% endif %}>{{ admin.get_full_name|default:admin.username }}</option>{% endfor %}</select></label>
+                    <label class="crm-form-field"><span>Следующий контакт</span><input type="datetime-local" name="next_contact_at" value="{{ selected_lead.next_contact_at|date:'Y-m-d\TH:i' }}"></label>
+                    <label class="crm-form-field"><span>Причина отказа</span><input type="text" name="lost_reason" value="{{ selected_lead.lost_reason }}" placeholder="Если клиент отказался"></label>
+                    <label class="crm-form-field crm-form-field--full"><span>Комментарий</span><textarea name="comment" rows="4" placeholder="Итоги разговора, ожидания, удобное время, следующий шаг">{{ selected_lead.comment }}</textarea></label>
+                </div>
+                <div style="display:flex; justify-content:flex-end; margin-top:14px;"><button class="crm-btn crm-btn--primary" type="submit">Сохранить</button></div>
+            </form>
+
+            {% if selected_lead.participant_request %}
+                <div class="crm-drawer-section">
+                    <h4>Связанная заявка</h4>
+                    <a class="crm-btn crm-btn--secondary" href="{% url 'crm:requests' %}?search={{ selected_lead.phone }}">Открыть в заявках</a>
+                </div>
+            {% endif %}
+        {% endif %}
+        <div class="crm-form-alert" {% if not form_error %}hidden{% endif %}>{{ form_error|default:'' }}</div>
+    </div>
+
+    <footer class="crm-drawer__footer">
+        <button class="crm-btn crm-btn--secondary" type="button" onclick="closeLeadDrawer()">Закрыть</button>
+        {% if selected_lead and selected_lead.participant_request %}
+            <button class="crm-btn crm-btn--primary" type="button" hx-get="{% url 'crm:request_create_student' selected_lead.participant_request.id %}" hx-target="#studentDrawerContent" hx-swap="outerHTML" hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('studentDrawer')?.classList.add('is-open')">Создать ученика</button>
+        {% endif %}
+    </footer>
+</div>
