@@ -53,15 +53,20 @@ def get_payments_queryset(request):
 
 
 def get_payments_context(request, payment=None):
-    payments = get_payments_queryset(request)
-    payments_data = PaymentSerializer(payments, many=True).data
-    completed_amount = sum(float(item.get("amount") or 0) for item in payments_data if item.get("status") == "completed")
-    pending_count = sum(1 for item in payments_data if item.get("status") == "pending")
-    problem_count = sum(1 for item in payments_data if item.get("status") in ["failed", "canceled", "refunded"])
+    payments_queryset = get_payments_queryset(request)
+    pagination = get_pagination(request, payments_queryset)
+    payments_data = PaymentSerializer(pagination["items"], many=True).data
+    all_payments = get_payments_queryset(request)
+    completed_amount = all_payments.filter(status="completed").aggregate(total=Sum("amount"))["total"] or 0
+    pending_count = all_payments.filter(status="pending").count()
+    problem_count = all_payments.filter(status__in=["failed", "canceled", "refunded"]).count()
 
     return {
         "payments": payments_data,
-        "payments_count": len(payments_data),
+        "payments_count": pagination["total"],
+        "next_offset": pagination["next_offset"],
+        "has_more": pagination["has_more"],
+        "is_load_more": pagination["is_load_more"],
         "completed_amount": completed_amount,
         "pending_count": pending_count,
         "problem_count": problem_count,
@@ -173,13 +178,18 @@ def prepare_subscription_for_crm(subscription):
 
 
 def get_subscriptions_context(request, subscription=None, error=None):
-    subscriptions = [prepare_subscription_for_crm(item) for item in get_subscriptions_queryset(request)]
+    subscriptions_queryset = get_subscriptions_queryset(request)
+    pagination = get_pagination(request, subscriptions_queryset)
+    subscriptions = [prepare_subscription_for_crm(item) for item in pagination["items"]]
     all_subscriptions = Subscription.objects.all()
     today = timezone.now().date()
 
     return {
         "subscriptions": subscriptions,
-        "subscriptions_count": len(subscriptions),
+        "subscriptions_count": pagination["total"],
+        "next_offset": pagination["next_offset"],
+        "has_more": pagination["has_more"],
+        "is_load_more": pagination["is_load_more"],
         "active_count": all_subscriptions.filter(status="active", end_date__gte=today).count(),
         "pending_count": all_subscriptions.filter(status="pending").count(),
         "ending_lessons_count": all_subscriptions.filter(status="active", lessons_used__gte=F("lessons_total") - 2).count(),

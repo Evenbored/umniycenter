@@ -34,6 +34,27 @@ from crm.api_views import build_dashboard_payload, parse_dashboard_date
 
 logger = logging.getLogger(__name__)
 
+CRM_LIST_PAGE_SIZE = 50
+
+
+def get_pagination(request, queryset, page_size=CRM_LIST_PAGE_SIZE):
+    try:
+        offset = max(int(request.GET.get("offset") or 0), 0)
+    except (TypeError, ValueError):
+        offset = 0
+    total = queryset.count()
+    items = list(queryset[offset:offset + page_size])
+    next_offset = offset + len(items)
+    return {
+        "items": items,
+        "total": total,
+        "offset": offset,
+        "next_offset": next_offset,
+        "has_more": total > next_offset,
+        "page_size": page_size,
+        "is_load_more": offset > 0,
+    }
+
 def crm_toast(message, title="Готово", toast_type="success"):
     return {
         "type": toast_type,

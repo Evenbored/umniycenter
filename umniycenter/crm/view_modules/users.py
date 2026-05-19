@@ -121,10 +121,14 @@ def get_student_for_drawer(student_id):
 
 
 def get_students_context(request, selected_student=None, error=None):
-    students = get_students_queryset(request)
+    students_queryset = get_students_queryset(request)
+    pagination = get_pagination(request, students_queryset)
     return {
-        "students": students,
-        "students_count": students.count(),
+        "students": pagination["items"],
+        "students_count": pagination["total"],
+        "next_offset": pagination["next_offset"],
+        "has_more": pagination["has_more"],
+        "is_load_more": pagination["is_load_more"],
         "groups": SchoolGroups.objects.select_related("course", "teacher").order_by("course__name", "number"),
         "courses": Courses.objects.all().order_by("name"),
         "source_choices": LeadSource.choices,

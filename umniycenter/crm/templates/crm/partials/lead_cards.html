@@ -1,0 +1,27 @@
+{% for lead in leads %}
+    <article class="crm-lead-card {% if lead.is_contact_overdue %}is-overdue{% endif %}" hx-get="{% url 'crm:lead_drawer' lead.id %}" hx-target="#leadDrawerContent" hx-swap="outerHTML" hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('leadDrawer').classList.add('is-open')">
+        <div class="crm-lead-card__top">
+            <strong>{{ lead.child_fio }}</strong>
+            <span>#{{ lead.id }}</span>
+        </div>
+        <div class="crm-lead-card__meta">{{ lead.parent_fio }}</div>
+        <div class="crm-lead-card__meta">{{ lead.phone }}{% if lead.email %} · {{ lead.email }}{% endif %}</div>
+        <div class="crm-lead-card__tags">
+            {% for course in lead.courses.all|slice:':2' %}<span class="crm-group-chip">{{ course.name }}</span>{% endfor %}
+        </div>
+        <div class="crm-lead-card__footer">
+            <span>{% if lead.assigned_to %}{{ lead.assigned_to.get_full_name|default:lead.assigned_to.username }}{% else %}Без ответственного{% endif %}</span>
+            <span>{% if lead.is_contact_overdue %}Просрочен: {% endif %}{% if lead.next_contact_at %}{{ lead.next_contact_at|date:'d.m H:i' }}{% else %}Нет контакта{% endif %}</span>
+        </div>
+        <div class="crm-lead-card__actions" onclick="event.stopPropagation()">
+            {% if lead.status != 'in_progress' %}<button type="button" hx-post="{% url 'crm:lead_status' lead.id %}" hx-target="#leadsBoardHost" hx-swap="innerHTML" name="lead_status" value="in_progress">В работу</button>{% endif %}
+            {% if lead.status != 'no_answer' %}<button type="button" hx-post="{% url 'crm:lead_status' lead.id %}" hx-target="#leadsBoardHost" hx-swap="innerHTML" name="lead_status" value="no_answer">Не дозвонились</button>{% endif %}
+            {% if lead.status != 'waiting_decision' %}<button type="button" hx-post="{% url 'crm:lead_status' lead.id %}" hx-target="#leadsBoardHost" hx-swap="innerHTML" name="lead_status" value="waiting_decision">Думает</button>{% endif %}
+            {% if lead.status != 'trial_scheduled' %}<button type="button" hx-post="{% url 'crm:lead_status' lead.id %}" hx-target="#leadsBoardHost" hx-swap="innerHTML" name="lead_status" value="trial_scheduled">Пробное</button>{% endif %}
+        </div>
+    </article>
+{% endfor %}
+
+{% if has_more %}
+    <button class="crm-leads-load-more" type="button" hx-get="{% url 'crm:leads_cards' %}?status={{ status_value }}&offset={{ next_offset }}" hx-target="this" hx-swap="outerHTML" hx-include="#leadsSearch, .crm-toolbar__filters">Загрузить еще</button>
+{% endif %}

@@ -44,7 +44,9 @@ def get_requests_queryset(request):
 def get_requests_context(request, selected_request=None, error=None):
     for participant_request in ParticipantRequest.objects.prefetch_related("courses").filter(lead__isnull=True)[:50]:
         Lead.from_participant_request(participant_request)
-    requests = get_requests_queryset(request)
+    requests_queryset = get_requests_queryset(request)
+    pagination = get_pagination(request, requests_queryset)
+    requests = pagination["items"]
     for participant_request in requests:
         try:
             participant_request.crm_lead = participant_request.lead
@@ -52,7 +54,10 @@ def get_requests_context(request, selected_request=None, error=None):
             participant_request.crm_lead = None
     return {
         "participant_requests": requests,
-        "requests_count": requests.count(),
+        "requests_count": pagination["total"],
+        "next_offset": pagination["next_offset"],
+        "has_more": pagination["has_more"],
+        "is_load_more": pagination["is_load_more"],
         "lead_new_count": Lead.objects.filter(status=LeadStatus.NEW).count(),
         "lead_work_count": Lead.objects.filter(status__in=[LeadStatus.IN_PROGRESS, LeadStatus.NO_ANSWER, LeadStatus.CONTACTED, LeadStatus.TRIAL_SCHEDULED, LeadStatus.TRIAL_COMPLETED, LeadStatus.WAITING_DECISION]).count(),
         "lead_converted_count": Lead.objects.filter(status=LeadStatus.CONVERTED).count(),
@@ -64,7 +69,10 @@ def get_requests_context(request, selected_request=None, error=None):
     }
 
 
-def get_leads_queryset(request):
+LEADS_COLUMN_PAGE_SIZE = 20
+
+
+def get_leads_queryset(request, force_status=None, apply_status_filter=True):
     leads = Lead.objects.select_related(
         "participant_request",
         "assigned_to",
@@ -86,7 +94,9 @@ def get_leads_queryset(request):
             | Q(courses__name__icontains=search)
             | Q(comment__icontains=search)
         ).distinct()
-    if status_filter:
+    if force_status:
+        leads = leads.filter(status=force_status)
+    elif apply_status_filter and status_filter:
         leads = leads.filter(status=status_filter)
     if assigned_to:
         leads = leads.filter(assigned_to_id=assigned_to)
@@ -105,21 +115,35 @@ def get_leads_queryset(request):
 
 
 def get_leads_context(request, selected_lead=None, error=None):
-    leads = list(get_leads_queryset(request))
     now = timezone.now()
-    for lead in leads:
-        lead.is_contact_overdue = bool(lead.next_contact_at and lead.next_contact_at < now and lead.status not in [LeadStatus.CONVERTED, LeadStatus.LOST, LeadStatus.ARCHIVED])
     if selected_lead:
         selected_lead.is_contact_overdue = bool(selected_lead.next_contact_at and selected_lead.next_contact_at < now and selected_lead.status not in [LeadStatus.CONVERTED, LeadStatus.LOST, LeadStatus.ARCHIVED])
+
+    selected_status = request.GET.get("status") or ""
     grouped_leads = {status: [] for status, _ in LeadStatus.choices}
-    for lead in leads:
-        grouped_leads.setdefault(lead.status, []).append(lead)
+    grouped_counts = {status: 0 for status, _ in LeadStatus.choices}
+    grouped_has_more = {status: False for status, _ in LeadStatus.choices}
+
+    for status, _ in LeadStatus.choices:
+        if selected_status and selected_status != status:
+            continue
+        status_qs = get_leads_queryset(request, force_status=status, apply_status_filter=False)
+        grouped_counts[status] = status_qs.count()
+        grouped_has_more[status] = grouped_counts[status] > LEADS_COLUMN_PAGE_SIZE
+        status_leads = list(status_qs[:LEADS_COLUMN_PAGE_SIZE])
+        for lead in status_leads:
+            lead.is_contact_overdue = bool(lead.next_contact_at and lead.next_contact_at < now and lead.status not in [LeadStatus.CONVERTED, LeadStatus.LOST, LeadStatus.ARCHIVED])
+        grouped_leads[status] = status_leads
 
     work_statuses = [LeadStatus.IN_PROGRESS, LeadStatus.NO_ANSWER, LeadStatus.CONTACTED, LeadStatus.TRIAL_SCHEDULED, LeadStatus.TRIAL_COMPLETED, LeadStatus.WAITING_DECISION]
+    total_count = get_leads_queryset(request).count()
     return {
-        "leads": leads,
+        "leads": [],
         "grouped_leads": grouped_leads,
-        "leads_count": len(leads),
+        "grouped_counts": grouped_counts,
+        "grouped_has_more": grouped_has_more,
+        "leads_count": total_count,
+        "leads_page_size": LEADS_COLUMN_PAGE_SIZE,
         "lead_status_choices": LeadStatus.choices,
         "lead_new_count": Lead.objects.filter(status=LeadStatus.NEW).count(),
         "lead_work_count": Lead.objects.filter(status__in=work_statuses).count(),
@@ -137,6 +161,21 @@ def get_lead_for_drawer(lead_id):
         Lead.objects.select_related("participant_request", "assigned_to", "converted_student", "converted_parent").prefetch_related("courses"),
         id=lead_id,
     )
+
+
+def get_lead_cards_context(request, status_value, offset=0):
+    now = timezone.now()
+    qs = get_leads_queryset(request, force_status=status_value, apply_status_filter=False)
+    total = qs.count()
+    leads = list(qs[offset:offset + LEADS_COLUMN_PAGE_SIZE])
+    for lead in leads:
+        lead.is_contact_overdue = bool(lead.next_contact_at and lead.next_contact_at < now and lead.status not in [LeadStatus.CONVERTED, LeadStatus.LOST, LeadStatus.ARCHIVED])
+    return {
+        "status_value": status_value,
+        "leads": leads,
+        "next_offset": offset + len(leads),
+        "has_more": total > offset + len(leads),
+    }
 
 
 def build_request_drawer_context(request, participant_request=None, error=None):
@@ -213,6 +252,19 @@ def requests_table_partial(request):
 
 def leads_board_partial(request):
     return render(request, "crm/partials/leads_board.html", get_leads_context(request))
+
+
+@login_required
+@admin_required
+def leads_cards_partial(request):
+    status_value = request.GET.get("status") or LeadStatus.NEW
+    if status_value not in LeadStatus.values:
+        return HttpResponseForbidden("Некорректный статус лида")
+    try:
+        offset = int(request.GET.get("offset") or 0)
+    except ValueError:
+        offset = 0
+    return render(request, "crm/partials/lead_cards.html", get_lead_cards_context(request, status_value, offset=offset))
 
 
 def lead_drawer_partial(request, lead_id):

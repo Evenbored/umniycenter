@@ -11,6 +11,7 @@ urlpatterns = [
     path('crm/requests/table/', views.requests_table_partial, name='requests_table'),
     path('crm/leads/', views.leads_view, name='leads'),
     path('crm/leads/board/', views.leads_board_partial, name='leads_board'),
+    path('crm/leads/cards/', views.leads_cards_partial, name='leads_cards'),
     path('crm/leads/<int:lead_id>/drawer/', views.lead_drawer_partial, name='lead_drawer'),
     path('crm/leads/<int:lead_id>/update/', views.lead_update_partial, name='lead_update'),
     path('crm/leads/<int:lead_id>/status/', views.lead_status_partial, name='lead_status'),
