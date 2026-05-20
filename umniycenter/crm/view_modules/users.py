@@ -1,12 +1,15 @@
 from .common import *
 
 
+
 def students_view(request):
     return render(request, "crm/students.html", get_students_context(request))
 
 
+
 def teachers_view(request):
     return render(request, "crm/teachers.html", get_teachers_context(request))
+
 
 
 def parents_view(request):
@@ -864,3 +867,29 @@ def parent_save_partial(request, parent_id):
             toast=crm_toast("Данные родителя сохранены"),
         ),
     )
+
+
+protect_crm_views(
+    globals(),
+    "students_view",
+    "teachers_view",
+    "parents_view",
+    "students_table_partial",
+    "student_drawer_partial",
+    "student_save_partial",
+    "student_add_group_partial",
+    "student_remove_group_partial",
+    "student_buy_tariff_modal_partial",
+    "student_payments_partial",
+    "student_subscription_freeze_partial",
+    "student_subscription_unfreeze_partial",
+    "student_confirm_payment_partial",
+    "student_cancel_payment_partial",
+    "student_buy_tariff_partial",
+    "teachers_table_partial",
+    "teacher_drawer_partial",
+    "teacher_save_partial",
+    "parents_table_partial",
+    "parent_drawer_partial",
+    "parent_save_partial",
+)

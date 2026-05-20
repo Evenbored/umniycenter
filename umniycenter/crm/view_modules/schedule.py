@@ -394,3 +394,25 @@ def schedule_attendance_cancel_partial(request, attendance_id):
     attendance.delete()
     student.update_active_status()
     return render(request, "crm/partials/schedule_attendance.html", get_lesson_attendance_context(request, lesson, success="Отметка отменена"))
+
+
+protect_crm_views(
+    globals(),
+    "schedule_view",
+    "schedule_today_view",
+    "schedule_today_lessons_partial",
+    "schedule_today_attendance_partial",
+    "schedule_today_student_partial",
+    "schedule_lessons_partial",
+    "schedule_lesson_drawer_partial",
+    "schedule_lesson_cancel_partial",
+    "schedule_lesson_reschedule_partial",
+    "schedule_template_partial",
+    "schedule_template_save_partial",
+    "schedule_template_delete_partial",
+    "schedule_generate_partial",
+    "schedule_create_lesson_drawer_partial",
+    "schedule_lesson_create_partial",
+    "schedule_attendance_mark_partial",
+    "schedule_attendance_cancel_partial",
+)

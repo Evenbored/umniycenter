@@ -124,3 +124,13 @@ def task_complete_partial(request, task_id):
     response = render(request, "crm/partials/tasks_table.html", get_tasks_context(request))
     response["HX-Trigger"] = hx_trigger("crm:refresh-stats", toast=crm_toast("Задача выполнена"))
     return response
+
+
+protect_crm_views(
+    globals(),
+    "tasks_view",
+    "tasks_table_partial",
+    "task_drawer_partial",
+    "task_save_partial",
+    "task_complete_partial",
+)

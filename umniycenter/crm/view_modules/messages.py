@@ -112,3 +112,13 @@ def messages_close_partial(request, ticket_id):
     )
     response["HX-Trigger"] = hx_trigger("crm:refresh-stats", toast=crm_toast("Обращение закрыто"))
     return response
+
+
+protect_crm_views(
+    globals(),
+    "messages_view",
+    "messages_tickets_partial",
+    "messages_chat_partial",
+    "messages_send_partial",
+    "messages_close_partial",
+)

@@ -538,3 +538,24 @@ def tariff_save_partial(request, tariff_id=None):
             toast=crm_toast("Тариф сохранён"),
         ),
     )
+
+
+protect_crm_views(
+    globals(),
+    "payments_view",
+    "subscriptions_view",
+    "subscriptions_table_partial",
+    "subscriptions_check_partial",
+    "subscription_drawer_partial",
+    "subscription_freeze_partial",
+    "subscription_unfreeze_partial",
+    "subscription_close_partial",
+    "payments_table_partial",
+    "payment_drawer_partial",
+    "payment_confirm_partial",
+    "payment_cancel_partial",
+    "tariffs_view",
+    "tariffs_table_partial",
+    "tariff_drawer_partial",
+    "tariff_save_partial",
+)

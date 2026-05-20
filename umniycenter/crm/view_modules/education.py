@@ -270,3 +270,19 @@ def course_delete_partial(request, course_id):
             toast=crm_toast("Курс удалён"),
         ),
     )
+
+
+protect_crm_views(
+    globals(),
+    "groups_view",
+    "courses_view",
+    "groups_table_partial",
+    "group_drawer_partial",
+    "group_save_partial",
+    "group_template_save_partial",
+    "group_template_delete_partial",
+    "courses_table_partial",
+    "course_drawer_partial",
+    "course_save_partial",
+    "course_delete_partial",
+)

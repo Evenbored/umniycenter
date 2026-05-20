@@ -1,8 +1,10 @@
 from .common import *
 
 
+
 def requests_view(request):
     return render(request, "crm/requests.html", get_requests_context(request))
+
 
 
 def leads_view(request):
@@ -296,8 +298,7 @@ def leads_board_partial(request):
     return render(request, "crm/partials/leads_board.html", get_leads_context(request))
 
 
-@login_required
-@admin_required
+
 def leads_cards_partial(request):
     status_value = request.GET.get("status") or LeadStatus.NEW
     if status_value not in LeadStatus.values:
@@ -587,3 +588,23 @@ def request_lead_update_partial(request, request_id):
         drawer_html=drawer_html,
         triggers=hx_trigger("crm:refresh-stats", toast=crm_toast("Данные лида обновлены")),
     )
+
+
+protect_crm_views(
+    globals(),
+    "requests_view",
+    "requests_table_partial",
+    "leads_view",
+    "leads_board_partial",
+    "leads_cards_partial",
+    "lead_drawer_partial",
+    "lead_create_drawer_partial",
+    "lead_create_partial",
+    "lead_update_partial",
+    "lead_status_partial",
+    "lead_create_student_partial",
+    "request_drawer_partial",
+    "request_mark_processed_partial",
+    "request_create_student_partial",
+    "request_lead_update_partial",
+)

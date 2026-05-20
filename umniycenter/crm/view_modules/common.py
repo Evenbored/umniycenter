@@ -97,3 +97,9 @@ def admin_required(view_func):
         return view_func(request, *args, **kwargs)
 
     return wrapped
+
+
+def protect_crm_views(namespace, *view_names):
+    for view_name in view_names:
+        namespace[view_name] = login_required(admin_required(namespace[view_name]))
+    return namespace
