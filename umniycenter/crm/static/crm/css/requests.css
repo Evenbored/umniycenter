@@ -785,6 +785,10 @@
     background: var(--crm-soft-blue-bg);
 }
 
+.crm-row-overdue {
+    background: var(--crm-danger-soft-bg);
+}
+
 .crm-form-alert.is-success {
     background: var(--crm-success-soft-bg);
     color: var(--crm-success-soft-text);

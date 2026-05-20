@@ -170,6 +170,34 @@ class SubscriptionMonitoringService:
             subscription.parent.update_active_status()
 
         refreshed_risks = cls.get_risk_queryset(today=today)
+        tasks_created = 0
+        try:
+            from accounts.models import CustomUser, UserRole
+            from tasks.services import TaskService
+
+            assignee = CustomUser.objects.filter(role=UserRole.ADMIN, is_active=True).order_by('id').first()
+            renewal_subscription_ids = set(refreshed_risks['low_lessons'].values_list('id', flat=True))
+            renewal_subscription_ids.update(refreshed_risks['expiring_soon'].values_list('id', flat=True))
+
+            renewal_subscriptions = Subscription.objects.select_related('student', 'parent', 'tariff', 'tariff__course').filter(id__in=renewal_subscription_ids)
+            for subscription in renewal_subscriptions:
+                reasons = []
+                if subscription.lessons_remaining <= cls.LOW_LESSONS_THRESHOLD:
+                    reasons.append(f'Осталось {subscription.lessons_remaining} занятий')
+                if subscription.end_date <= today + timezone.timedelta(days=cls.EXPIRING_DAYS_THRESHOLD):
+                    reasons.append(f'Абонемент заканчивается {subscription.end_date:%d.%m.%Y}')
+                _, created = TaskService.create_for_subscription_renewal(
+                    subscription,
+                    assignee=assignee,
+                    author=created_by,
+                    due_at=timezone.now() + timezone.timedelta(days=1),
+                    reason='; '.join(reasons),
+                )
+                if created:
+                    tasks_created += 1
+        except Exception:
+            tasks_created = 0
+
         return {
             'expired_updated': expired_count,
             'exhausted_updated': exhausted_count,
@@ -177,5 +205,6 @@ class SubscriptionMonitoringService:
             'expiring_soon': refreshed_risks['expiring_soon'].count(),
             'pending_payment': refreshed_risks['pending_payment'].count(),
             'negative_balance': refreshed_risks['negative_balance'].count(),
+            'tasks_created': tasks_created,
             'checked_at': timezone.now(),
         }

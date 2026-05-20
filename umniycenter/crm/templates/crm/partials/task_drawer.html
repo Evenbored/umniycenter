@@ -1,0 +1,21 @@
+<div class="crm-drawer__panel crm-drawer__panel--lg" id="taskDrawerContent">
+    <header class="crm-drawer__header"><div><h3>{% if selected_task %}Задача #{{ selected_task.id }}{% else %}Новая задача{% endif %}</h3><p>{% if selected_task %}{{ selected_task.get_status_display }}{% else %}Создание задачи сотруднику{% endif %}</p></div><button class="crm-btn-icon" type="button" onclick="closeTaskDrawer()">×</button></header>
+    <div class="crm-drawer__content">
+        <form class="crm-drawer-section crm-student-edit-form" id="taskForm" hx-post="{% if selected_task %}{% url 'crm:task_save' selected_task.id %}{% else %}{% url 'crm:task_save_create' %}{% endif %}" hx-target="#taskDrawerContent" hx-swap="outerHTML">
+            {% csrf_token %}
+            <h4>Данные задачи</h4>
+            <div class="crm-form-grid">
+                <label class="crm-form-field"><span>Название *</span><input name="title" required value="{{ selected_task.title|default:'' }}"></label>
+                <label class="crm-form-field"><span>Ответственный</span><select name="assignee"><option value="">Не назначен</option>{% for admin in admins %}<option value="{{ admin.id }}" {% if selected_task.assignee_id == admin.id %}selected{% endif %}>{{ admin.get_full_name|default:admin.username }}</option>{% endfor %}</select></label>
+                <label class="crm-form-field"><span>Тип</span><select name="task_type">{% for value,label in type_choices %}<option value="{{ value }}" {% if selected_task.task_type == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+                <label class="crm-form-field"><span>Статус</span><select name="status">{% for value,label in status_choices %}<option value="{{ value }}" {% if selected_task.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+                <label class="crm-form-field"><span>Приоритет</span><select name="priority">{% for value,label in priority_choices %}<option value="{{ value }}" {% if selected_task.priority == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+                <label class="crm-form-field"><span>Срок</span><input type="datetime-local" name="due_at" value="{{ selected_task.due_at|date:'Y-m-d\TH:i' }}"></label>
+                <label class="crm-form-field crm-form-field--full"><span>Связанный лид</span><select name="lead"><option value="">Без лида</option>{% for lead in leads %}<option value="{{ lead.id }}" {% if selected_task.lead_id == lead.id %}selected{% endif %}>#{{ lead.id }} {{ lead.child_fio }} · {{ lead.phone }}</option>{% endfor %}</select></label>
+                <label class="crm-form-field crm-form-field--full"><span>Описание</span><textarea name="description" rows="4">{{ selected_task.description|default:'' }}</textarea></label>
+            </div>
+            <div class="crm-form-alert" {% if not form_error %}hidden{% endif %}>{{ form_error|default:'' }}</div>
+        </form>
+    </div>
+    <footer class="crm-drawer__footer"><button class="crm-btn crm-btn--secondary" type="button" onclick="closeTaskDrawer()">Закрыть</button><button class="crm-btn crm-btn--primary" type="submit" form="taskForm">Сохранить</button></footer>
+</div>

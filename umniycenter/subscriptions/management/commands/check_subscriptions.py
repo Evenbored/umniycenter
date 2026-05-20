@@ -15,3 +15,4 @@ class Command(BaseCommand):
         self.stdout.write(f"Expiring soon: {result['expiring_soon']}")
         self.stdout.write(f"Pending payment: {result['pending_payment']}")
         self.stdout.write(f"Negative balance: {result['negative_balance']}")
+        self.stdout.write(f"Renewal tasks created: {result.get('tasks_created', 0)}")

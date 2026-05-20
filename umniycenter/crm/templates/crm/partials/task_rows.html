@@ -1,0 +1,12 @@
+{% for task in tasks %}
+<tr class="{% if task.crm_is_overdue %}crm-row-overdue{% endif %}" hx-get="{% url 'crm:task_drawer' task.id %}" hx-target="#taskDrawerContent" hx-swap="outerHTML" hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('taskDrawer').classList.add('is-open')">
+    <td><div class="crm-table-name">{{ task.title }}</div><span class="crm-table-meta">{{ task.get_priority_display }}</span></td>
+    <td>{{ task.get_task_type_display }}</td>
+    <td>{{ task.assignee.get_full_name|default:task.assignee.username|default:'-' }}</td>
+    <td>{% if task.crm_is_overdue %}Просрочено: {% endif %}{{ task.due_at|date:'d.m.Y H:i'|default:'-' }}</td>
+    <td>{% if task.lead %}<span class="crm-group-chip">Лид #{{ task.lead.id }}</span>{% elif task.subscription %}<span class="crm-group-chip">Абонемент</span>{% elif task.payment %}<span class="crm-group-chip">Платеж</span>{% else %}<span class="crm-table-meta">-</span>{% endif %}</td>
+    <td><span class="crm-status-badge {% if task.status == 'done' %}crm-status-badge--active{% else %}crm-status-badge--archive{% endif %}">{{ task.get_status_display }}</span></td>
+    <td>{% if task.status != 'done' %}<button class="crm-table-action-btn" type="button" hx-post="{% url 'crm:task_complete' task.id %}" hx-target="#tasksTableHost" hx-swap="innerHTML" onclick="event.stopPropagation()">✓</button>{% endif %}</td>
+</tr>
+{% endfor %}
+{% if has_more %}<tr class="crm-load-more-row"><td colspan="7"><button class="crm-load-more-btn" type="button" hx-get="{% url 'crm:tasks_table' %}?offset={{ next_offset }}" hx-target="closest tr" hx-swap="outerHTML" hx-include="#tasksSearch, .crm-toolbar__filters">Загрузить еще</button></td></tr>{% endif %}

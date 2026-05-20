@@ -15,6 +15,7 @@
     </div>
     <div class="crm-section-actions">
         <a class="crm-btn crm-btn--secondary" href="{% url 'crm:requests' %}">Заявки с сайта</a>
+        <button class="crm-btn crm-btn--primary" type="button" hx-get="{% url 'crm:lead_create_drawer' %}" hx-target="#leadCreateDrawerContent" hx-swap="outerHTML" hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('leadCreateDrawer').classList.add('is-open')">Добавить лид</button>
         <button class="crm-btn crm-btn--primary" type="button" hx-get="{% url 'crm:leads_board' %}" hx-target="#leadsBoardHost" hx-swap="innerHTML" hx-include="#leadsSearch, .crm-toolbar__filters">
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
             Обновить
@@ -60,6 +61,11 @@
     {% include 'crm/partials/lead_drawer.html' %}
 </aside>
 
+<aside class="crm-drawer" id="leadCreateDrawer">
+    <div class="crm-drawer__overlay" onclick="closeLeadCreateDrawer()"></div>
+    {% include 'crm/partials/lead_create_drawer.html' %}
+</aside>
+
 <aside class="crm-drawer" id="studentDrawer">
     <div class="crm-drawer__overlay" onclick="closeStudentDrawer()"></div>
     {% include 'crm/partials/request_student_drawer.html' %}
@@ -71,9 +77,13 @@
     function closeLeadDrawer() {
         document.getElementById('leadDrawer')?.classList.remove('is-open');
     }
+    function closeLeadCreateDrawer() {
+        document.getElementById('leadCreateDrawer')?.classList.remove('is-open');
+    }
     function closeStudentDrawer() {
         document.getElementById('studentDrawer')?.classList.remove('is-open');
     }
     document.body.addEventListener('crm:close-student-drawer', closeStudentDrawer);
+    document.body.addEventListener('crm:close-lead-create-drawer', closeLeadCreateDrawer);
 </script>
 {% endblock scripts %}

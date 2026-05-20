@@ -30,6 +30,8 @@ from schedule.models import Schedule
 from schedule.models import GroupScheduleTemplate
 from communication.models import Message, Ticket, TicketStatus
 from sales.models import Lead, LeadStatus
+from tasks.models import Task, TaskPriority, TaskStatus, TaskType
+from tasks.services import TaskService
 from crm.api_views import build_dashboard_payload, parse_dashboard_date
 
 logger = logging.getLogger(__name__)

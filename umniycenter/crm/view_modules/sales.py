@@ -9,6 +9,14 @@ def leads_view(request):
     return render(request, "crm/leads.html", get_leads_context(request))
 
 
+def build_lead_form_context(request, lead=None, error=None):
+    return {
+        **get_leads_context(request, selected_lead=lead, error=error),
+        "courses": Courses.objects.all().order_by("name"),
+        "student_form": build_student_from_lead_context(request, lead=lead)["student_form"] if lead else None,
+    }
+
+
 def get_requests_queryset(request):
     requests = ParticipantRequest.objects.prefetch_related("courses")
     search = (request.GET.get("search") or "").strip()
@@ -222,6 +230,40 @@ def build_student_from_request_context(request, participant_request=None, data=N
     }
 
 
+def build_student_from_lead_context(request, lead=None, data=None, error=None):
+    data = data or {}
+    child_name = split_name(lead.child_fio if lead else "")
+    parent_name = split_name(lead.parent_fio if lead else "")
+
+    def value(name, default=""):
+        return data.get(name, default)
+
+    form = {
+        "last_name": value("last_name", child_name["last_name"]),
+        "first_name": value("first_name", child_name["first_name"]),
+        "birth_date": value("birth_date", ""),
+        "sex": value("sex", ""),
+        "phone": value("phone", ""),
+        "email": value("email", ""),
+        "city": value("city", ""),
+        "country": value("country", "Россия"),
+        "source": value("source", lead.source if lead else ""),
+        "parent_last_name": value("parent_last_name", parent_name["last_name"]),
+        "parent_first_name": value("parent_first_name", parent_name["first_name"]),
+        "parent_phone": value("parent_phone", lead.phone if lead else ""),
+        "parent_email": value("parent_email", lead.email if lead else ""),
+        "username": value("username", make_username(lead.child_fio if lead else "student")),
+        "password": value("password", f"student{lead.id}" if lead else "student123"),
+    }
+    return {
+        "lead": lead,
+        "participant_request": lead.participant_request if lead else None,
+        "student_form": form,
+        "source_choices": LeadSource.choices,
+        "form_error": error,
+    }
+
+
 def get_request_for_drawer(request_id):
     return get_object_or_404(ParticipantRequest.objects.prefetch_related("courses"), id=request_id)
 
@@ -270,6 +312,33 @@ def leads_cards_partial(request):
 def lead_drawer_partial(request, lead_id):
     lead = get_lead_for_drawer(lead_id)
     return render(request, "crm/partials/lead_drawer.html", get_leads_context(request, selected_lead=lead))
+
+
+def lead_create_drawer_partial(request):
+    return render(request, "crm/partials/lead_create_drawer.html", build_lead_form_context(request))
+
+
+def lead_create_partial(request):
+    try:
+        lead = Lead.objects.create(
+            parent_fio=(request.POST.get("parent_fio") or "").strip(),
+            child_fio=(request.POST.get("child_fio") or "").strip(),
+            phone=(request.POST.get("phone") or "").strip(),
+            email=(request.POST.get("email") or "").strip() or None,
+            age=(request.POST.get("age") or "").strip(),
+            source=request.POST.get("source") or None,
+            status=request.POST.get("lead_status") or LeadStatus.NEW,
+            assigned_to=CustomUser.objects.filter(id=request.POST.get("assigned_to"), role=UserRole.ADMIN).first() or request.user,
+            comment=(request.POST.get("comment") or "").strip(),
+        )
+        if not lead.parent_fio or not lead.child_fio or not lead.phone:
+            raise ValueError("Укажите родителя, ребенка и телефон")
+        lead.courses.set(Courses.objects.filter(id__in=request.POST.getlist("courses")))
+        TaskService.create_for_lead(lead, assignee=lead.assigned_to, author=request.user)
+    except Exception as exc:
+        return render(request, "crm/partials/lead_create_drawer.html", build_lead_form_context(request, error=str(exc)), status=400)
+    drawer_html = render_to_string("crm/partials/lead_create_drawer.html", build_lead_form_context(request), request=request)
+    return render_oob_response("leadsBoardHost", "crm/partials/leads_board.html", get_leads_context(request), request, drawer_html=drawer_html, triggers=hx_trigger("crm:close-lead-create-drawer", "crm:refresh-stats", toast=crm_toast("Лид создан, задача на контакт добавлена")))
 
 
 def lead_oob_response(request, lead, toast_message):
@@ -330,6 +399,8 @@ def lead_status_partial(request, lead_id):
         if status_value in [LeadStatus.CONTACTED, LeadStatus.NO_ANSWER, LeadStatus.TRIAL_SCHEDULED, LeadStatus.TRIAL_COMPLETED, LeadStatus.WAITING_DECISION]:
             lead.last_contact_at = timezone.now()
         lead.save(update_fields=["status", "assigned_to", "last_contact_at", "lost_reason", "updated_at"])
+        if status_value == LeadStatus.NEW:
+            TaskService.create_for_lead(lead, assignee=lead.assigned_to or request.user, author=request.user)
     except Exception as exc:
         if request.headers.get("HX-Target") == "leadDrawerContent":
             return render(request, "crm/partials/lead_drawer.html", get_leads_context(request, selected_lead=lead, error=str(exc)), status=400)
@@ -340,6 +411,49 @@ def lead_status_partial(request, lead_id):
         response = render(request, "crm/partials/leads_board.html", get_leads_context(request))
     response["HX-Trigger"] = hx_trigger("crm:refresh-stats", toast=crm_toast("Статус лида изменен"))
     return response
+
+
+def lead_create_student_partial(request, lead_id):
+    lead = get_lead_for_drawer(lead_id)
+
+    if request.method == "GET":
+        return render(request, "crm/partials/request_student_drawer.html", build_student_from_lead_context(request, lead=lead))
+
+    try:
+        with transaction.atomic():
+            result, error = create_student_with_parent(request.POST)
+            if error:
+                raise ValueError(error.get("error") or serializer_errors_to_text(error))
+
+            if lead.participant_request_id:
+                lead.participant_request.checked = True
+                lead.participant_request.save(update_fields=["checked"])
+            lead.mark_converted(student=result["student"], parent=result.get("parent"))
+    except Exception as exc:
+        return render(
+            request,
+            "crm/partials/request_student_drawer.html",
+            build_student_from_lead_context(request, lead=lead, data=request.POST, error=str(exc)),
+            status=400,
+        )
+
+    lead = get_lead_for_drawer(lead_id)
+    student = result["student"]
+    lead_drawer_html = render_to_string("crm/partials/lead_drawer.html", get_leads_context(request, selected_lead=lead), request=request)
+    student_drawer_html = render_to_string("crm/partials/request_student_drawer.html", build_student_from_lead_context(request, lead=lead), request=request)
+    toast_text = f"Ученик {student.last_name} {student.first_name} создан. Логин: {student.username}"
+    return render_oob_response(
+        "leadsBoardHost",
+        "crm/partials/leads_board.html",
+        get_leads_context(request),
+        request,
+        drawer_html=lead_drawer_html + student_drawer_html,
+        triggers=hx_trigger(
+            "crm:close-student-drawer",
+            "crm:refresh-stats",
+            toast=crm_toast(toast_text, title="Ученик создан"),
+        ),
+    )
 
 
 def request_drawer_partial(request, request_id):

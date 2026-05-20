@@ -8,3 +8,4 @@ from .view_modules.education import *
 from .view_modules.finance import *
 from .view_modules.sales import *
 from .view_modules.messages import *
+from .view_modules.tasks import *

@@ -1,0 +1,14 @@
+{% if is_load_more %}
+    {% include 'crm/partials/task_rows.html' %}
+{% else %}
+<section class="crm-requests-kpi-grid">
+    <div class="crm-requests-kpi"><span>Новые</span><strong>{{ new_count }}</strong></div>
+    <div class="crm-requests-kpi"><span>Сегодня</span><strong>{{ today_count }}</strong></div>
+    <div class="crm-requests-kpi"><span>Просрочены</span><strong>{{ overdue_count }}</strong></div>
+    <div class="crm-requests-kpi"><span>Выполнены</span><strong>{{ done_count }}</strong></div>
+</section>
+<div class="crm-data-panel__header"><div><strong>{{ tasks_count }}</strong><span> задач найдено</span></div><span class="crm-data-panel__hint">Клик по строке открывает задачу</span></div>
+<div class="crm-table-wrapper"><table class="crm-table"><thead><tr><th>Задача</th><th>Тип</th><th>Ответственный</th><th>Срок</th><th>Связь</th><th>Статус</th><th></th></tr></thead><tbody>
+{% if tasks %}{% include 'crm/partials/task_rows.html' %}{% else %}<tr><td colspan="7" class="crm-table-empty">Задачи не найдены</td></tr>{% endif %}
+</tbody></table></div>
+{% endif %}

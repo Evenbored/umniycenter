@@ -1,7 +1,7 @@
 <div class="crm-drawer__panel crm-drawer__panel--xl" id="studentDrawerContent">
     <header class="crm-drawer__header">
         <div>
-            <h3>Создать ученика из заявки</h3>
+            <h3>Создать ученика из {% if lead and not participant_request %}лида{% else %}заявки{% endif %}</h3>
             <p>Проверьте данные, заполните недостающее и сохраните ученика.</p>
         </div>
         <button class="crm-btn-icon" type="button" onclick="closeStudentDrawer()" aria-label="Закрыть">
@@ -9,7 +9,7 @@
         </button>
     </header>
 
-    <form class="crm-drawer__content crm-form" id="studentFromRequestForm" hx-post="{% if participant_request %}{% url 'crm:request_create_student' participant_request.id %}{% endif %}" hx-target="#studentDrawerContent" hx-swap="outerHTML">
+    <form class="crm-drawer__content crm-form" id="studentFromRequestForm" hx-post="{% if lead %}{% url 'crm:lead_create_student' lead.id %}{% elif participant_request %}{% url 'crm:request_create_student' participant_request.id %}{% endif %}" hx-target="#studentDrawerContent" hx-swap="outerHTML">
         {% csrf_token %}
         <div class="crm-form-alert" id="studentFormAlert" {% if not form_error %}hidden{% endif %}>{{ form_error|default:'' }}</div>
 
@@ -49,7 +49,12 @@
         <div class="crm-drawer-section">
             <h4>Источник</h4>
             <div class="crm-request-preview" id="studentRequestPreview">
-                {% if participant_request %}
+                {% if lead and not participant_request %}
+                    <strong>{{ lead.child_fio }}</strong>
+                    Родитель: {{ lead.parent_fio }}<br>
+                    Телефон родителя: {{ lead.phone }}<br>
+                    Курсы: {% for course in lead.courses.all %}{{ course.name }}{% if not forloop.last %}, {% endif %}{% empty %}Не указаны{% endfor %}
+                {% elif participant_request %}
                     <strong>{{ participant_request.child_fio }}</strong>
                     Родитель: {{ participant_request.parent_fio }}<br>
                     Телефон родителя: {{ participant_request.phone }}<br>

@@ -10,7 +10,9 @@ def main_page(request):
             particRequest = form.save()
             try:
                 from sales.models import Lead
-                Lead.from_participant_request(particRequest)
+                from tasks.services import TaskService
+                lead = Lead.from_participant_request(particRequest)
+                TaskService.create_for_lead(lead)
             except Exception:
                 pass
             messages.success(

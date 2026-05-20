@@ -1,0 +1,22 @@
+<div class="crm-drawer__panel crm-drawer__panel--lg" id="leadCreateDrawerContent">
+    <header class="crm-drawer__header"><div><h3>Добавить лид</h3><p>Для обращения, полученного офлайн или по телефону</p></div><button class="crm-btn-icon" type="button" onclick="closeLeadCreateDrawer()">×</button></header>
+    <div class="crm-drawer__content">
+        <form class="crm-drawer-section crm-student-edit-form" id="leadCreateForm" hx-post="{% url 'crm:lead_create' %}" hx-target="#leadCreateDrawerContent" hx-swap="outerHTML">
+            {% csrf_token %}
+            <div class="crm-form-grid">
+                <label class="crm-form-field"><span>ФИО родителя *</span><input name="parent_fio" required></label>
+                <label class="crm-form-field"><span>ФИО ребенка *</span><input name="child_fio" required></label>
+                <label class="crm-form-field"><span>Телефон *</span><input name="phone" required placeholder="+79001234567"></label>
+                <label class="crm-form-field"><span>Email</span><input name="email" type="email"></label>
+                <label class="crm-form-field"><span>Возраст</span><input name="age" type="number" min="1" max="18"></label>
+                <label class="crm-form-field"><span>Источник</span><select name="source"><option value="">Не указан</option>{% for value,label in source_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></label>
+                <label class="crm-form-field"><span>Статус</span><select name="lead_status">{% for value,label in lead_status_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></label>
+                <label class="crm-form-field"><span>Ответственный</span><select name="assigned_to"><option value="">Текущий администратор</option>{% for admin in admins %}<option value="{{ admin.id }}">{{ admin.get_full_name|default:admin.username }}</option>{% endfor %}</select></label>
+                <label class="crm-form-field crm-form-field--full"><span>Курсы</span><select name="courses" multiple>{% for course in courses %}<option value="{{ course.id }}">{{ course.name }}</option>{% endfor %}</select></label>
+                <label class="crm-form-field crm-form-field--full"><span>Комментарий</span><textarea name="comment" rows="4"></textarea></label>
+            </div>
+            <div class="crm-form-alert" {% if not form_error %}hidden{% endif %}>{{ form_error|default:'' }}</div>
+        </form>
+    </div>
+    <footer class="crm-drawer__footer"><button class="crm-btn crm-btn--secondary" type="button" onclick="closeLeadCreateDrawer()">Закрыть</button><button class="crm-btn crm-btn--primary" type="submit" form="leadCreateForm">Создать лид</button></footer>
+</div>

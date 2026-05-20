@@ -124,8 +124,8 @@
                     <span class="crm-nav__icon">D</span>
                     <span>Главная</span>
                 </a>
-                <div class="crm-nav__dropdown {% if url_name == 'requests' or url_name == 'leads' %}is-open{% endif %}">
-                    <div class="crm-nav__item crm-nav__item--dropdown {% if url_name == 'requests' or url_name == 'leads' %}is-active{% endif %}">
+                <div class="crm-nav__dropdown {% if url_name == 'requests' or url_name == 'leads' or url_name == 'tasks' %}is-open{% endif %}">
+                    <div class="crm-nav__item crm-nav__item--dropdown {% if url_name == 'requests' or url_name == 'leads' or url_name == 'tasks' %}is-active{% endif %}">
                         <span class="crm-nav__icon">S</span>
                         <span>Продажи</span>
                         <svg class="crm-nav__arrow" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
@@ -137,6 +137,9 @@
                         </a>
                         <a class="crm-nav__subitem {% if url_name == 'leads' %}is-active{% endif %}" href="{% url 'crm:leads' %}">
                             <span>Воронка лидов</span>
+                        </a>
+                        <a class="crm-nav__subitem {% if url_name == 'tasks' %}is-active{% endif %}" href="{% url 'crm:tasks' %}">
+                            <span>Задачи</span>
                         </a>
                     </div>
                 </div>
