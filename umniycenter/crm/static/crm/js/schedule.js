@@ -937,7 +937,7 @@
         loadTeachers();
         loadStudents();
         loadCourses();
-        loadSchedule();
+        if (!window.htmx) loadSchedule();
         if (!window.htmx) loadTemplates();
 
         document.getElementById("scheduleDateFrom").addEventListener("change", loadSchedule);

@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .api_views import MyScheduleAPIView
+from .api.views import MyScheduleAPIView
 from . import views
 
 app_name = 'schedule'

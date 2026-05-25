@@ -1,11 +1,11 @@
 {% for lead in leads %}
     <article class="crm-lead-card {% if lead.is_contact_overdue %}is-overdue{% endif %}" hx-get="{% url 'crm:lead_drawer' lead.id %}" hx-target="#leadDrawerContent" hx-swap="outerHTML" hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('leadDrawer').classList.add('is-open')">
         <div class="crm-lead-card__top">
-            <strong>{{ lead.child_fio }}</strong>
+            <strong title="{{ lead.child_fio }}">{{ lead.child_fio }}</strong>
             <span>#{{ lead.id }}</span>
         </div>
-        <div class="crm-lead-card__meta">{{ lead.parent_fio }}</div>
-        <div class="crm-lead-card__meta">{{ lead.phone }}{% if lead.email %} · {{ lead.email }}{% endif %}</div>
+        <div class="crm-lead-card__meta" title="{{ lead.parent_fio }}">{{ lead.parent_fio }}</div>
+        <div class="crm-lead-card__meta crm-lead-card__contact" title="{{ lead.phone }}{% if lead.email %} · {{ lead.email }}{% endif %}">{{ lead.phone }}{% if lead.email %} · {{ lead.email }}{% endif %}</div>
         <div class="crm-lead-card__tags">
             {% for course in lead.courses.all|slice:':2' %}<span class="crm-group-chip">{{ course.name }}</span>{% endfor %}
         </div>

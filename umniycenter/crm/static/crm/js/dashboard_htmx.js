@@ -26,11 +26,17 @@
         return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
     }
 
-    function circleDashArray(value, total) {
+    function circleSegment(value, total, startRatio = 0) {
         const radius = 80;
         const circumference = 2 * Math.PI * radius;
-        const ratio = total > 0 ? (value / total) : 0;
-        return `${ratio * circumference} ${circumference}`;
+        const safeTotal = Number(total || 0);
+        const safeValue = Math.max(Number(value || 0), 0);
+        const ratio = safeTotal > 0 ? Math.min(safeValue / safeTotal, 1) : 0;
+        const start = Math.max(Number(startRatio || 0), 0);
+        return {
+            dasharray: `${ratio * circumference} ${circumference}`,
+            dashoffset: `${-start * circumference}`,
+        };
     }
 
     function loadDashboard(date) {
@@ -68,7 +74,7 @@
                     weekdays: [],
                     weeks: [],
                 },
-                subscriptions: { group: 0, individual: 0, total: 0 },
+                subscriptions: { group: 0, individual: 0, new: 0, renewal: 0, total: 0 },
                 singleLessons: { group: 0, individual: 0, total: 0 },
                 products: { total: 0 },
                 attendance: { group: 0, individual: 0, total: 0 },
@@ -91,13 +97,13 @@
                 individualAttendance: 'Посещения по индивидуальным занятиям за выбранную дату',
             },
             circles: {
-                subscriptionsGroup: '0 502',
-                subscriptionsIndividual: '0 502',
-                singleGroup: '0 502',
-                singleIndividual: '0 502',
-                products: '0 502',
-                attendanceGroup: '0 502',
-                attendanceIndividual: '0 502',
+                subscriptionsGroup: { dasharray: '0 502', dashoffset: '0' },
+                subscriptionsIndividual: { dasharray: '0 502', dashoffset: '0' },
+                singleGroup: { dasharray: '0 502', dashoffset: '0' },
+                singleIndividual: { dasharray: '0 502', dashoffset: '0' },
+                products: { dasharray: '0 502', dashoffset: '0' },
+                attendanceGroup: { dasharray: '0 502', dashoffset: '0' },
+                attendanceIndividual: { dasharray: '0 502', dashoffset: '0' },
             },
             get calendar() {
                 return this.dashboard?.calendar || {
@@ -135,13 +141,17 @@
                 const products = this.dashboard.products || { total: 0 };
                 const attendance = this.dashboard.attendance || { group: 0, individual: 0, total: 0 };
 
-                this.circles.subscriptionsGroup = circleDashArray(subscriptions.group, subscriptions.total);
-                this.circles.subscriptionsIndividual = circleDashArray(subscriptions.individual, subscriptions.total);
-                this.circles.singleGroup = circleDashArray(singleLessons.group, singleLessons.total);
-                this.circles.singleIndividual = circleDashArray(singleLessons.individual, singleLessons.total);
-                this.circles.products = circleDashArray(products.total, products.total || 1);
-                this.circles.attendanceGroup = circleDashArray(attendance.group, attendance.total);
-                this.circles.attendanceIndividual = circleDashArray(attendance.individual, attendance.total);
+                const subscriptionsGroupRatio = subscriptions.total > 0 ? subscriptions.group / subscriptions.total : 0;
+                const singleGroupRatio = singleLessons.total > 0 ? singleLessons.group / singleLessons.total : 0;
+                const attendanceGroupRatio = attendance.total > 0 ? attendance.group / attendance.total : 0;
+
+                this.circles.subscriptionsGroup = circleSegment(subscriptions.group, subscriptions.total, 0);
+                this.circles.subscriptionsIndividual = circleSegment(subscriptions.individual, subscriptions.total, subscriptionsGroupRatio);
+                this.circles.singleGroup = circleSegment(singleLessons.group, singleLessons.total, 0);
+                this.circles.singleIndividual = circleSegment(singleLessons.individual, singleLessons.total, singleGroupRatio);
+                this.circles.products = circleSegment(products.total, products.total || 1, 0);
+                this.circles.attendanceGroup = circleSegment(attendance.group, attendance.total, 0);
+                this.circles.attendanceIndividual = circleSegment(attendance.individual, attendance.total, attendanceGroupRatio);
             },
             refreshBalancePercents() {
                 const incomeItems = this.dashboard.balance?.income?.items || [];

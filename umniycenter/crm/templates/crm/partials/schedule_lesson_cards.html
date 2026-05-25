@@ -1,0 +1,27 @@
+{% if lessons %}
+    {% for lesson in lessons %}
+        <article class="crm-lesson-card" hx-get="{% url 'crm:schedule_lesson_drawer' lesson.id %}" hx-target="#lessonDrawerContent" hx-swap="outerHTML" hx-on::after-request="if (event.detail.xhr.status < 400) document.getElementById('lessonDrawer').classList.add('is-open')">
+            <div class="crm-lesson-card__top">
+                <div>
+                    <h4 class="crm-lesson-card__title">{{ lesson.title }}</h4>
+                    <div class="crm-lesson-card__meta">{{ lesson.course_name|default:'Без курса' }} · {{ lesson.teacher.get_full_name|default:lesson.teacher.username }}</div>
+                </div>
+                <span class="crm-status-badge crm-status-badge--{{ lesson.actual_status }}">{{ lesson.actual_status_label }}</span>
+            </div>
+            <div class="crm-lesson-card__time">
+                <span>{{ lesson.classdateStart|date:'d.m.Y H:i' }}</span>
+                <span>до {{ lesson.classdateEnd|time:'H:i' }}</span>
+            </div>
+            {% if lesson.cancel_reason %}<div class="crm-table-meta">Причина отмены: {{ lesson.cancel_reason }}</div>{% endif %}
+            {% if lesson.reschedule_reason %}<div class="crm-table-meta">Причина переноса: {{ lesson.reschedule_reason }}</div>{% endif %}
+        </article>
+    {% endfor %}
+{% else %}
+    <div class="crm-table-empty">Занятия не найдены. Сгенерируйте расписание или измените фильтры.</div>
+{% endif %}
+
+{% if has_more %}
+    <div id="scheduleLoadMoreBlock" class="crm-load-more-row">
+        <button class="crm-load-more-btn" type="button" hx-get="{% url 'crm:schedule_lessons' %}?offset={{ next_offset }}" hx-target="#scheduleLoadMoreBlock" hx-swap="outerHTML" hx-include="#scheduleFiltersForm">Загрузить еще</button>
+    </div>
+{% endif %}

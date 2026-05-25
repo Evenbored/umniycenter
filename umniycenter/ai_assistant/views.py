@@ -5,7 +5,7 @@ from django.shortcuts import render
 from django.views.decorators.http import require_http_methods
 
 from accounts.models import UserRole
-from crm.api_views import parse_dashboard_date
+from crm.api.views import parse_dashboard_date
 
 from .clients import AdminAIAssistant
 from .context import build_dashboard_ai_context

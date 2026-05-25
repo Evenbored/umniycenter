@@ -49,9 +49,14 @@ def get_group_students(group):
 
 
 def get_groups_context(request, selected_group=None, error=None, data=None):
+    groups_queryset = get_groups_queryset(request)
+    pagination = get_pagination(request, groups_queryset)
     return {
-        "groups": get_groups_queryset(request),
-        "groups_count": get_groups_queryset(request).count(),
+        "groups": pagination["items"],
+        "groups_count": pagination["total"],
+        "next_offset": pagination["next_offset"],
+        "has_more": pagination["has_more"],
+        "is_load_more": pagination["is_load_more"],
         "courses": Courses.objects.all().order_by("name"),
         "teachers": CustomUser.objects.filter(role=UserRole.TEACHER, is_active=True).order_by("last_name", "first_name", "id"),
         "selected_group": selected_group,
@@ -103,6 +108,10 @@ def save_group_from_post(request, group=None):
 
 def groups_table_partial(request):
     return render(request, "crm/partials/groups_table.html", get_groups_context(request))
+
+
+def groups_rows_partial(request):
+    return render(request, "crm/partials/group_rows.html", get_groups_context(request))
 
 
 def group_drawer_partial(request, group_id=None):
@@ -168,10 +177,14 @@ def get_courses_queryset(request):
 
 
 def get_courses_context(request, course=None):
-    courses = get_courses_queryset(request)
+    courses_queryset = get_courses_queryset(request)
+    pagination = get_pagination(request, courses_queryset)
     return {
-        "courses": courses,
-        "courses_count": courses.count(),
+        "courses": pagination["items"],
+        "courses_count": pagination["total"],
+        "next_offset": pagination["next_offset"],
+        "has_more": pagination["has_more"],
+        "is_load_more": pagination["is_load_more"],
         "selected_course": course,
     }
 
@@ -195,6 +208,10 @@ def build_course_drawer_context(request, course=None, data=None, error=None):
 
 def courses_table_partial(request):
     return render(request, "crm/partials/courses_table.html", get_courses_context(request))
+
+
+def courses_rows_partial(request):
+    return render(request, "crm/partials/course_rows.html", get_courses_context(request))
 
 
 def course_drawer_partial(request, course_id=None):

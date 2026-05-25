@@ -17,10 +17,11 @@ def parents_view(request):
 
 
 def get_parents_queryset(request):
+    from django.db.models import Count
     parents = CustomUser.objects.filter(role=UserRole.PARENT).prefetch_related(
         "parent_profile__students",
         "parent_profile__students__user",
-    )
+    ).annotate(children_count=Count("parent_profile__students", distinct=True))
     search = (request.GET.get("search") or "").strip()
     sort = request.GET.get("sort") or "name_az"
 
@@ -38,19 +39,23 @@ def get_parents_queryset(request):
     parents = parents.order_by("last_name", "first_name", "id")
     if sort == "name_za":
         parents = parents.order_by("-last_name", "-first_name", "id")
+    elif sort == "children_many":
+        parents = parents.order_by("-children_count", "last_name", "first_name", "id")
 
     return parents
 
 
 def get_parents_context(request):
     parents = get_parents_queryset(request)
-    parents_data = ParentListSerializer(parents, many=True).data
     sort = request.GET.get("sort") or "name_az"
-    if sort == "children_many":
-        parents_data = sorted(parents_data, key=lambda item: len(item.get("children") or []), reverse=True)
+    pagination = get_pagination(request, parents)
+    parents_data = ParentListSerializer(pagination["items"], many=True).data
     return {
         "parents": parents_data,
-        "parents_count": len(parents_data),
+        "parents_count": pagination["total"],
+        "next_offset": pagination["next_offset"],
+        "has_more": pagination["has_more"],
+        "is_load_more": pagination["is_load_more"],
         "sort": sort,
     }
 
@@ -209,7 +214,8 @@ def build_student_drawer_context(request, student=None, data=None, error=None):
 
 
 def get_teachers_queryset(request):
-    teachers = CustomUser.objects.filter(role=UserRole.TEACHER).prefetch_related("schoolgroups_set__course")
+    from django.db.models import Count
+    teachers = CustomUser.objects.filter(role=UserRole.TEACHER).prefetch_related("schoolgroups_set__course").annotate(groups_count=Count("schoolgroups", distinct=True))
     search = (request.GET.get("search") or "").strip()
     status = request.GET.get("status") or "active"
     sort = request.GET.get("sort") or "name_az"
@@ -245,10 +251,14 @@ def get_teacher_schedule(teacher):
 
 
 def get_teachers_context(request, selected_teacher=None, error=None):
-    teachers = get_teachers_queryset(request)
+    teachers_queryset = get_teachers_queryset(request)
+    pagination = get_pagination(request, teachers_queryset)
     return {
-        "teachers": teachers,
-        "teachers_count": teachers.count(),
+        "teachers": pagination["items"],
+        "teachers_count": pagination["total"],
+        "next_offset": pagination["next_offset"],
+        "has_more": pagination["has_more"],
+        "is_load_more": pagination["is_load_more"],
         "selected_teacher": selected_teacher,
         "teacher_groups": selected_teacher.schoolgroups_set.select_related("course").all() if selected_teacher else [],
         "teacher_schedule": get_teacher_schedule(selected_teacher) if selected_teacher else [],
@@ -744,6 +754,10 @@ def teachers_table_partial(request):
     return render(request, "crm/partials/teachers_table.html", get_teachers_context(request))
 
 
+def teachers_rows_partial(request):
+    return render(request, "crm/partials/teacher_rows.html", get_teachers_context(request))
+
+
 def teacher_drawer_partial(request, teacher_id=None):
     teacher = get_teacher_for_drawer(teacher_id) if teacher_id else None
     return render(request, "crm/partials/teacher_drawer.html", get_teachers_context(request, selected_teacher=teacher))
@@ -820,6 +834,10 @@ def build_parent_drawer_context(request, parent=None, error=None):
 
 def parents_table_partial(request):
     return render(request, "crm/partials/parents_table.html", get_parents_context(request))
+
+
+def parents_rows_partial(request):
+    return render(request, "crm/partials/parent_rows.html", get_parents_context(request))
 
 
 def parent_drawer_partial(request, parent_id):

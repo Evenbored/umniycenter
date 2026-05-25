@@ -469,10 +469,14 @@ def get_tariffs_queryset(request):
 
 
 def get_tariffs_context(request, tariff=None):
-    tariffs = get_tariffs_queryset(request)
+    tariffs_queryset = get_tariffs_queryset(request)
+    pagination = get_pagination(request, tariffs_queryset)
     return {
-        "tariffs": tariffs,
-        "tariffs_count": tariffs.count(),
+        "tariffs": pagination["items"],
+        "tariffs_count": pagination["total"],
+        "next_offset": pagination["next_offset"],
+        "has_more": pagination["has_more"],
+        "is_load_more": pagination["is_load_more"],
         "courses": Courses.objects.all().order_by("name"),
         "selected_tariff": tariff,
         "subscription_type_choices": Tariff.SUBSCRIPTION_TYPE_CHOICES,
@@ -481,6 +485,10 @@ def get_tariffs_context(request, tariff=None):
 
 def tariffs_table_partial(request):
     return render(request, "crm/partials/tariffs_table.html", get_tariffs_context(request))
+
+
+def tariffs_rows_partial(request):
+    return render(request, "crm/partials/tariff_rows.html", get_tariffs_context(request))
 
 
 def tariff_drawer_partial(request, tariff_id=None):

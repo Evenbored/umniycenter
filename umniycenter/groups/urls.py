@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .api_views import GroupsCountAPIView, MyGroupsAPIView, create_group, update_group
+from .api.views import GroupsCountAPIView, MyGroupsAPIView, create_group, update_group
 from . import views
 
 app_name = 'groups'

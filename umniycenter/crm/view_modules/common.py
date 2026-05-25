@@ -16,23 +16,23 @@ from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 
 from accounts.models import CustomUser, LeadSource, ParentProfile, StudentProfile, TeacherProfile, UserRole
-from accounts.serializers import ParentListSerializer, ParentUpdateSerializer
+from accounts.api.serializers import ParentListSerializer, ParentUpdateSerializer
 from courses.models import Courses
 from groups.models import SchoolGroups
 from main.models import ParticipantRequest
-from students.api_views import create_student_with_parent, generate_parent_username, validate_optional_email, validate_optional_phone, validate_source
+from students.api.views import create_student_with_parent, generate_parent_username, validate_optional_email, validate_optional_phone, validate_source
 from students.models import StudentGroups
-from students.serializers import StudentUpdateSerializer
+from students.api.serializers import StudentUpdateSerializer
 from subscriptions.models import Payment, Subscription, Tariff
 from subscriptions.payment_service import PaymentService
-from subscriptions.serializers import PaymentSerializer
+from subscriptions.api.serializers import PaymentSerializer
 from schedule.models import Schedule
 from schedule.models import GroupScheduleTemplate
 from communication.models import Message, Ticket, TicketStatus
 from sales.models import Lead, LeadStatus
 from tasks.models import Task, TaskPriority, TaskStatus, TaskType
 from tasks.services import TaskService
-from crm.api_views import build_dashboard_payload, parse_dashboard_date
+from crm.api.views import build_dashboard_payload, parse_dashboard_date
 
 logger = logging.getLogger(__name__)
 
@@ -44,8 +44,18 @@ def get_pagination(request, queryset, page_size=CRM_LIST_PAGE_SIZE):
         offset = max(int(request.GET.get("offset") or 0), 0)
     except (TypeError, ValueError):
         offset = 0
-    total = queryset.count()
-    items = list(queryset[offset:offset + page_size])
+    if hasattr(queryset, "count"):
+        try:
+            total = queryset.count()
+        except TypeError:
+            total = len(queryset)
+    else:
+        total = len(queryset)
+
+    try:
+        items = list(queryset[offset:offset + page_size])
+    except TypeError:
+        items = list(queryset)[offset:offset + page_size]
     next_offset = offset + len(items)
     return {
         "items": items,

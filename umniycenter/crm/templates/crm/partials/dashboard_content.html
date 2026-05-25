@@ -32,6 +32,7 @@
                                 'is-other-month': !day.is_current_month,
                                 'is-today': day.is_today,
                                 'is-selected': day.is_selected,
+                                'has-payments': day.has_payments,
                             }"
                             x-text="day.day"
                             @click.prevent="selectDate(day.date_iso)"
@@ -57,8 +58,8 @@
                 <div class="sales-chart-wrapper">
                     <svg class="sales-circle-chart" viewBox="0 0 200 200">
                         <circle class="sales-circle-bg" cx="100" cy="100" r="80" />
-                        <circle class="sales-circle-progress sales-circle-group" cx="100" cy="100" r="80" :stroke-dasharray="circles.subscriptionsGroup" id="subscriptionsGroupCircle"/>
-                        <circle class="sales-circle-progress sales-circle-individual" cx="100" cy="100" r="80" :stroke-dasharray="circles.subscriptionsIndividual" id="subscriptionsIndividualCircle"/>
+                        <circle class="sales-circle-progress sales-circle-group" cx="100" cy="100" r="80" :stroke-dasharray="circles.subscriptionsGroup.dasharray" :stroke-dashoffset="circles.subscriptionsGroup.dashoffset" id="subscriptionsGroupCircle"/>
+                        <circle class="sales-circle-progress sales-circle-individual" cx="100" cy="100" r="80" :stroke-dasharray="circles.subscriptionsIndividual.dasharray" :stroke-dashoffset="circles.subscriptionsIndividual.dashoffset" id="subscriptionsIndividualCircle"/>
                     </svg>
                     <div class="sales-value">
                         <span class="sales-number" x-text="dashboard.subscriptions.total">{{ dashboard.subscriptions.total }}</span>
@@ -74,6 +75,12 @@
                         <span class="sales-legend-dot sales-legend-dot--individual"></span>
                         <span>Индивидуальные: <strong x-text="dashboard.subscriptions.individual">{{ dashboard.subscriptions.individual }}</strong></span>
                     </div>
+                    <div class="sales-legend-item">
+                        <span>Новые: <strong x-text="dashboard.subscriptions.new">{{ dashboard.subscriptions.new }}</strong></span>
+                    </div>
+                    <div class="sales-legend-item">
+                        <span>Продления: <strong x-text="dashboard.subscriptions.renewal">{{ dashboard.subscriptions.renewal }}</strong></span>
+                    </div>
                 </div>
             </div>
 
@@ -85,8 +92,8 @@
                 <div class="sales-chart-wrapper">
                     <svg class="sales-circle-chart" viewBox="0 0 200 200">
                         <circle class="sales-circle-bg" cx="100" cy="100" r="80" />
-                        <circle class="sales-circle-progress sales-circle-group" cx="100" cy="100" r="80" :stroke-dasharray="circles.singleGroup" id="singleLessonsGroupCircle"/>
-                        <circle class="sales-circle-progress sales-circle-individual" cx="100" cy="100" r="80" :stroke-dasharray="circles.singleIndividual" id="singleLessonsIndividualCircle"/>
+                        <circle class="sales-circle-progress sales-circle-group" cx="100" cy="100" r="80" :stroke-dasharray="circles.singleGroup.dasharray" :stroke-dashoffset="circles.singleGroup.dashoffset" id="singleLessonsGroupCircle"/>
+                        <circle class="sales-circle-progress sales-circle-individual" cx="100" cy="100" r="80" :stroke-dasharray="circles.singleIndividual.dasharray" :stroke-dashoffset="circles.singleIndividual.dashoffset" id="singleLessonsIndividualCircle"/>
                     </svg>
                     <div class="sales-value">
                         <span class="sales-number" x-text="dashboard.singleLessons.total">{{ dashboard.singleLessons.total }}</span>
@@ -113,7 +120,7 @@
                 <div class="sales-chart-wrapper">
                     <svg class="sales-circle-chart" viewBox="0 0 200 200">
                         <circle class="sales-circle-bg" cx="100" cy="100" r="80" />
-                        <circle class="sales-circle-progress sales-circle-products" cx="100" cy="100" r="80" :stroke-dasharray="circles.products" id="productsCircle"/>
+                        <circle class="sales-circle-progress sales-circle-products" cx="100" cy="100" r="80" :stroke-dasharray="circles.products.dasharray" :stroke-dashoffset="circles.products.dashoffset" id="productsCircle"/>
                     </svg>
                     <div class="sales-value">
                         <span class="sales-number" x-text="dashboard.products.total">{{ dashboard.products.total }}</span>
@@ -140,8 +147,8 @@
         <div class="sales-chart-wrapper">
             <svg class="sales-circle-chart" viewBox="0 0 200 200">
                 <circle class="sales-circle-bg" cx="100" cy="100" r="80" />
-                <circle class="sales-circle-progress sales-circle-group" cx="100" cy="100" r="80" :stroke-dasharray="circles.attendanceGroup" id="attendanceGroupCircle"/>
-                <circle class="sales-circle-progress sales-circle-individual" cx="100" cy="100" r="80" :stroke-dasharray="circles.attendanceIndividual" id="attendanceIndividualCircle"/>
+                <circle class="sales-circle-progress sales-circle-group" cx="100" cy="100" r="80" :stroke-dasharray="circles.attendanceGroup.dasharray" :stroke-dashoffset="circles.attendanceGroup.dashoffset" id="attendanceGroupCircle"/>
+                <circle class="sales-circle-progress sales-circle-individual" cx="100" cy="100" r="80" :stroke-dasharray="circles.attendanceIndividual.dasharray" :stroke-dashoffset="circles.attendanceIndividual.dashoffset" id="attendanceIndividualCircle"/>
             </svg>
             <div class="attendance-value">
                 <span class="attendance-label-top">Посещаемость</span>

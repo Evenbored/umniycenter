@@ -2,13 +2,22 @@ from .common import *
 
 
 def schedule_view(request):
-    return render(request, "crm/schedule.html", get_schedule_context(request))
+    today = timezone.localdate()
+    return render(request, "crm/schedule.html", {
+        "groups": SchoolGroups.objects.select_related("course", "teacher").filter(is_active=True).order_by("course__name", "number"),
+        "schedule_templates": GroupScheduleTemplate.objects.select_related("group", "group__course", "group__teacher").order_by("group__course__name", "group__number", "weekday", "start_time"),
+        "schedule_defaults": {
+            "date_from": today.isoformat(),
+            "date_to": (today + timedelta(days=30)).isoformat(),
+        },
+    })
 
 
 def get_schedule_queryset(request):
     lessons = Schedule.objects.select_related("group", "group__course", "teacher", "student", "course").order_by("classdateStart")
-    date_from = request.GET.get("date_from")
-    date_to = request.GET.get("date_to")
+    today = timezone.localdate()
+    date_from = request.GET.get("date_from") or today.isoformat()
+    date_to = request.GET.get("date_to") or (today + timedelta(days=30)).isoformat()
     group_id = request.GET.get("group")
     status_filter = request.GET.get("status")
 
@@ -40,11 +49,13 @@ def prepare_schedule_lesson(lesson):
 
 
 def get_schedule_context(request, selected_lesson=None, error=None):
-    lessons = [prepare_schedule_lesson(lesson) for lesson in get_schedule_queryset(request)]
+    pagination = get_pagination(request, get_schedule_queryset(request))
+    lessons = [prepare_schedule_lesson(lesson) for lesson in pagination["items"]]
     if selected_lesson:
         selected_lesson = prepare_schedule_lesson(selected_lesson)
     return {
         "lessons": lessons,
+        **pagination,
         "schedule_templates": GroupScheduleTemplate.objects.select_related("group", "group__course", "group__teacher").order_by("group__course__name", "group__number", "weekday", "start_time"),
         "groups": SchoolGroups.objects.select_related("course", "teacher").filter(is_active=True).order_by("course__name", "number"),
         "selected_lesson": selected_lesson,
@@ -181,7 +192,9 @@ def schedule_today_student_partial(request, lesson_id, student_id):
 
 
 def schedule_lessons_partial(request):
-    return render(request, "crm/partials/schedule_lessons.html", get_schedule_context(request))
+    context = get_schedule_context(request)
+    template = "crm/partials/schedule_lesson_cards.html" if context["is_load_more"] else "crm/partials/schedule_lessons.html"
+    return render(request, template, context)
 
 
 def schedule_lesson_drawer_partial(request, lesson_id):

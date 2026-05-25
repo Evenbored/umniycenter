@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .api_views import MyStudentsAPIView, StudentsCountAPIView
+from .api.views import MyStudentsAPIView, StudentsCountAPIView
 from . import views
 
 app_name = 'students'

@@ -12,11 +12,31 @@
     <span class="crm-data-panel__hint">Клик по карточке открывает лид. Быстрые кнопки переводят по этапам.</span>
 </div>
 
-<div class="crm-leads-board">
+<div class="crm-leads-board-tools" data-leads-board-tools>
+    <div class="crm-leads-stage-tabs" aria-label="Быстрая навигация по этапам лидов">
+        {% for status_value, status_label in lead_status_choices %}
+            <a class="crm-leads-stage-tab" href="#lead-stage-{{ status_value }}">
+                <span>{{ status_label }}</span>
+                <strong>{{ grouped_counts|get_item:status_value }}</strong>
+            </a>
+        {% endfor %}
+    </div>
+    <div class="crm-leads-board-actions">
+        <button class="crm-leads-board-action" type="button" data-leads-scroll="left" aria-label="Прокрутить влево">←</button>
+        <button class="crm-leads-board-action" type="button" data-leads-scroll="right" aria-label="Прокрутить вправо">→</button>
+        <button class="crm-leads-board-action" type="button" data-leads-density="compact">Компактно</button>
+    </div>
+</div>
+
+<div class="crm-leads-board-shell">
+<div class="crm-leads-board" id="leadsKanbanBoard">
     {% for status_value, status_label in lead_status_choices %}
-        <section class="crm-leads-column">
+        <section class="crm-leads-column" id="lead-stage-{{ status_value }}">
             <header class="crm-leads-column__header">
-                <strong>{{ status_label }}</strong>
+                <div>
+                    <strong>{{ status_label }}</strong>
+                    <small>{{ grouped_leads|get_item:status_value|length }} показано</small>
+                </div>
                 <span>{{ grouped_counts|get_item:status_value }}</span>
             </header>
             <div class="crm-leads-column__body">
@@ -30,4 +50,5 @@
             </div>
         </section>
     {% endfor %}
+</div>
 </div>

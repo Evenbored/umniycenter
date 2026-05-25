@@ -85,5 +85,30 @@
     }
     document.body.addEventListener('crm:close-student-drawer', closeStudentDrawer);
     document.body.addEventListener('crm:close-lead-create-drawer', closeLeadCreateDrawer);
+
+    function initLeadsKanban() {
+        const board = document.getElementById('leadsKanbanBoard');
+        const tools = document.querySelector('[data-leads-board-tools]');
+        if (!board || !tools || tools.dataset.initialized === 'true') return;
+        tools.dataset.initialized = 'true';
+
+        tools.querySelectorAll('[data-leads-scroll]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const direction = button.dataset.leadsScroll === 'right' ? 1 : -1;
+                board.scrollBy({ left: direction * Math.max(340, board.clientWidth * 0.8), behavior: 'smooth' });
+            });
+        });
+
+        const densityButton = tools.querySelector('[data-leads-density]');
+        densityButton?.addEventListener('click', () => {
+            board.classList.toggle('is-compact');
+            densityButton.textContent = board.classList.contains('is-compact') ? 'Подробно' : 'Компактно';
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', initLeadsKanban);
+    document.body.addEventListener('htmx:afterSwap', (event) => {
+        if (event.detail?.target?.id === 'leadsBoardHost') initLeadsKanban();
+    });
 </script>
 {% endblock scripts %}

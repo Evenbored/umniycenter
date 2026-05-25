@@ -23,9 +23,9 @@
 <form id="scheduleFiltersForm" class="crm-toolbar">
     <div class="crm-toolbar__filters" style="flex-direction: column; align-items: stretch;">
         <div style="display: flex; gap: 12px; align-items: center;">
-            <input class="crm-input" id="scheduleDateFrom" name="date_from" type="date" value="{{ request.GET.date_from }}">
+            <input class="crm-input" id="scheduleDateFrom" name="date_from" type="date" value="{{ request.GET.date_from|default:schedule_defaults.date_from }}">
             <span style="color: var(--crm-muted);">—</span>
-            <input class="crm-input" id="scheduleDateTo" name="date_to" type="date" value="{{ request.GET.date_to }}">
+            <input class="crm-input" id="scheduleDateTo" name="date_to" type="date" value="{{ request.GET.date_to|default:schedule_defaults.date_to }}">
             <select id="scheduleGroupFilter" name="group" class="crm-select">
                 <option value="">Все группы</option>
                 {% for group in groups %}<option value="{{ group.id }}" {% if request.GET.group == group.id|stringformat:'s' %}selected{% endif %}>{{ group.course.name }} · {{ group.number }}</option>{% endfor %}
@@ -48,7 +48,21 @@
 
 <section class="crm-schedule-grid">
     <article class="crm-data-panel">
-        {% include 'crm/partials/schedule_lessons.html' %}
+        <div id="scheduleListHost" hx-get="{% url 'crm:schedule_lessons' %}" hx-trigger="load" hx-swap="outerHTML" hx-include="#scheduleFiltersForm">
+            <div class="crm-data-panel__header">
+                <div>
+                    <strong id="scheduleCount">—</strong>
+                    <span>занятий</span>
+                </div>
+                <span class="crm-data-panel__hint">Загрузка расписания...</span>
+            </div>
+            <div class="crm-schedule-list" id="scheduleList">
+                <div class="crm-table-loading">
+                    <div class="crm-spinner"></div>
+                    <span>Загрузка расписания...</span>
+                </div>
+            </div>
+        </div>
     </article>
 
     <article class="crm-data-panel">

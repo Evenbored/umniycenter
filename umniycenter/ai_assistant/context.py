@@ -44,7 +44,10 @@ def build_dashboard_ai_context(selected_date=None):
         .select_related("subscription", "subscription__student", "subscription__tariff", "parent")
         .order_by("-created_at")
     )
-    completed_payments = Payment.objects.filter(status="completed", paid_at__date=selected_date)
+    completed_payments = Payment.objects.filter(status="completed").filter(
+        Q(paid_at__date=selected_date)
+        | Q(paid_at__isnull=True, created_at__date=selected_date)
+    )
     unread_parent_messages = Message.objects.filter(sender__role=UserRole.PARENT, is_read=False)
     active_tickets = Ticket.objects.filter(status__in=[TicketStatus.OPEN, TicketStatus.IN_PROGRESS]).select_related("parent")
     low_lesson_subscriptions = (
