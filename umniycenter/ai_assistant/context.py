@@ -6,8 +6,8 @@ from django.utils import timezone
 from accounts.models import CustomUser, UserRole
 from communication.models import Message, Ticket, TicketStatus
 from main.models import ParticipantRequest
-from schedule.models import Schedule
-from subscriptions.models import LessonAttendance, Payment, Subscription
+from schedule.models import Lesson, LessonParticipant, Schedule
+from subscriptions.models import Payment, Subscription
 
 
 def _full_name(user):
@@ -34,14 +34,15 @@ def build_dashboard_ai_context(selected_date=None):
 
     new_requests = ParticipantRequest.objects.filter(checked=False).prefetch_related("courses").order_by("-created")
     today_lessons = (
-        Schedule.objects.filter(classdateStart__date=selected_date)
-        .select_related("group", "group__course", "course", "student", "teacher")
-        .order_by("classdateStart")
+        Lesson.objects.filter(starts_at__date=selected_date)
+        .select_related("group", "group__course", "course", "teacher")
+        .order_by("starts_at")
     )
-    today_attendances = LessonAttendance.objects.filter(schedule__classdateStart__date=selected_date)
+    today_attendances = LessonParticipant.objects.filter(lesson__starts_at__date=selected_date)
     pending_payments = (
         Payment.objects.filter(status="pending")
-        .select_related("subscription", "subscription__student", "subscription__tariff", "parent")
+        .select_related("subscription", "subscription__student", "subscription__tariff", "order", "order__student", "parent")
+        .prefetch_related("order__items", "order__items__subscription", "order__items__tariff")
         .order_by("-created_at")
     )
     completed_payments = Payment.objects.filter(status="completed").filter(
@@ -64,10 +65,10 @@ def build_dashboard_ai_context(selected_date=None):
     )
 
     attendance_by_group = (
-        LessonAttendance.objects.filter(schedule__classdateStart__date=selected_date, schedule__group__isnull=False)
-        .values("schedule__group__course__name", "schedule__group__number")
-        .annotate(total=Count("id"), present=Count("id", filter=Q(status="present")), absent=Count("id", filter=Q(status="absent")))
-        .order_by("-absent", "schedule__group__course__name")[:5]
+        LessonParticipant.objects.filter(lesson__starts_at__date=selected_date, lesson__group__isnull=False)
+        .values("lesson__group__course__name", "lesson__group__number")
+        .annotate(total=Count("id"), present=Count("id", filter=Q(attendance_status="present")), absent=Count("id", filter=Q(attendance_status__in=["absent_charged", "absent_not_charged"])))
+        .order_by("-absent", "lesson__group__course__name")[:5]
     )
 
     lines = [
@@ -76,8 +77,8 @@ def build_dashboard_ai_context(selected_date=None):
         "Общие показатели:",
         f"- новых необработанных заявок: {new_requests.count()}",
         f"- занятий на выбранную дату: {today_lessons.count()}",
-        f"- посещений отмечено: {today_attendances.filter(status='present').count()}",
-        f"- пропусков отмечено: {today_attendances.filter(status='absent').count()}",
+        f"- посещений отмечено: {today_attendances.filter(attendance_status='present').count()}",
+        f"- пропусков отмечено: {today_attendances.filter(attendance_status__in=['absent_charged', 'absent_not_charged']).count()}",
         f"- платежей ожидает подтверждения: {pending_payments.count()}",
         f"- доход за выбранную дату: {_format_money(completed_payments.aggregate(total=Sum('amount'))['total'])} ₽",
         f"- непрочитанных сообщений от родителей: {unread_parent_messages.count()}",
@@ -109,15 +110,19 @@ def build_dashboard_ai_context(selected_date=None):
     for row in attendance_by_group:
         if row["absent"]:
             has_group_absences = True
-            group_name = f"{row['schedule__group__course__name']} - {row['schedule__group__number']}"
+            group_name = f"{row['lesson__group__course__name']} - {row['lesson__group__number']}"
             lines.append(f"- {group_name}: всего {row['total']}, присутствовали {row['present']}, отсутствовали {row['absent']}")
     if not has_group_absences:
         lines.append("- заметных групповых пропусков нет")
 
     lines.extend(["", "Платежи в ожидании:"])
     for payment in pending_payments[:5]:
-        student = _full_name(payment.subscription.student)
-        tariff = payment.subscription.tariff.name if payment.subscription and payment.subscription.tariff else "тариф не указан"
+        subscription = payment.subscription
+        if not subscription and payment.order_id:
+            item = payment.order.items.filter(subscription__isnull=False).first()
+            subscription = item.subscription if item else None
+        student = _full_name(subscription.student if subscription else payment.order.student if payment.order_id else None)
+        tariff = subscription.tariff.name if subscription and subscription.tariff else "тариф не указан"
         lines.append(f"- платёж #{payment.id}: {student}, {tariff}, сумма {_format_money(payment.amount)} ₽, создан {_format_datetime(payment.created_at)}")
     if not pending_payments.exists():
         lines.append("- ожидающих платежей нет")

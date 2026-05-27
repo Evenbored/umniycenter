@@ -12,13 +12,13 @@ from groups.models import SchoolGroups
 from accounts.permissions import IsAdminRole
 from accounts.api.serializers import UserListSerializer
 from students.models import StudentGroups
-from ..models import GroupScheduleTemplate, Schedule
-from .serializers import GroupScheduleTemplateSerializer, ScheduleSerializer
-from ..services import generate_schedule_for_range, get_lesson_end_time, get_user_schedule
+from ..models import GroupScheduleTemplate, Lesson, LessonParticipant, Schedule
+from .serializers import GroupScheduleTemplateSerializer, LessonParticipantSerializer, LessonSerializer, ScheduleSerializer
+from ..services import LessonService, generate_schedule_for_range, get_lesson_end_time, get_user_schedule
 
 
 class MyScheduleAPIView(ListAPIView):
-    serializer_class = ScheduleSerializer
+    serializer_class = LessonSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
@@ -26,11 +26,11 @@ class MyScheduleAPIView(ListAPIView):
 
 
 class CrmScheduleAPIView(ListAPIView):
-    serializer_class = ScheduleSerializer
+    serializer_class = LessonSerializer
     permission_classes = [IsAdminRole]
 
     def get_queryset(self):
-        queryset = Schedule.objects.select_related("group", "group__course", "teacher", "student", "course").order_by("classdateStart")
+        queryset = Lesson.objects.select_related("group", "group__course", "teacher", "course").prefetch_related("participants", "participants__student").order_by("starts_at")
         date_from = parse_date(self.request.query_params.get("date_from") or "")
         date_to = parse_date(self.request.query_params.get("date_to") or "")
         group_id = self.request.query_params.get("group")
@@ -38,10 +38,10 @@ class CrmScheduleAPIView(ListAPIView):
         status_filter = self.request.query_params.get("status")
 
         if date_from:
-            queryset = queryset.filter(classdateStart__date__gte=date_from)
+            queryset = queryset.filter(starts_at__date__gte=date_from)
 
         if date_to:
-            queryset = queryset.filter(classdateStart__date__lte=date_to)
+            queryset = queryset.filter(starts_at__date__lte=date_to)
 
         if group_id:
             queryset = queryset.filter(group_id=group_id)
@@ -49,30 +49,9 @@ class CrmScheduleAPIView(ListAPIView):
         # Фильтрация по статусу с учетом actual_status
         if status_filter:
             if status_filter == 'completed':
-                # Для "Прошло" - фильтруем занятия, которые уже закончились
-                from django.utils import timezone
-                from datetime import datetime
-                now = timezone.now()
-                # Получаем все занятия и фильтруем по времени окончания
-                completed_ids = []
-                for lesson in queryset:
-                    end_datetime = datetime.combine(lesson.classdateStart.date(), lesson.classdateEnd)
-                    end_datetime_aware = timezone.make_aware(end_datetime) if timezone.is_naive(end_datetime) else end_datetime
-                    if end_datetime_aware < now and lesson.status != 'cancelled':
-                        completed_ids.append(lesson.id)
-                queryset = queryset.filter(id__in=completed_ids)
+                queryset = queryset.filter(ends_at__lt=timezone.now()).exclude(status='cancelled')
             elif status_filter == 'scheduled':
-                # Для "Запланировано" - только те, что еще не прошли и не отменены/перенесены
-                from django.utils import timezone
-                from datetime import datetime
-                now = timezone.now()
-                scheduled_ids = []
-                for lesson in queryset:
-                    end_datetime = datetime.combine(lesson.classdateStart.date(), lesson.classdateEnd)
-                    end_datetime_aware = timezone.make_aware(end_datetime) if timezone.is_naive(end_datetime) else end_datetime
-                    if end_datetime_aware >= now and lesson.status == 'scheduled':
-                        scheduled_ids.append(lesson.id)
-                queryset = queryset.filter(id__in=scheduled_ids)
+                queryset = queryset.filter(ends_at__gte=timezone.now(), status='scheduled')
             else:
                 # Для cancelled и rescheduled фильтруем по полю status
                 queryset = queryset.filter(status=status_filter)
@@ -142,7 +121,7 @@ def generate_crm_schedule(request):
     return Response({
         "message": f"Создано занятий: {len(created)}",
         "created_count": len(created),
-        "lessons": ScheduleSerializer(created, many=True).data,
+        "lessons": LessonSerializer(created, many=True).data,
     })
 
 
@@ -151,12 +130,15 @@ def create_crm_lesson(request):
     if request.user.role != UserRole.ADMIN:
         return Response({"error": "Только администратор может создавать занятия"}, status=status.HTTP_403_FORBIDDEN)
 
-    lesson_type = request.data.get("lesson_type") or Schedule.LESSON_TYPE_REGULAR
-    classdate_start = parse_datetime(request.data.get("classdateStart") or "")
+    lesson_type = request.data.get("lesson_type") or Lesson.LessonType.GROUP
+    classdate_start = parse_datetime(request.data.get("starts_at") or request.data.get("classdateStart") or "")
+    ends_at = parse_datetime(request.data.get("ends_at") or "")
     lessons_count = int(request.data.get("lessons_count") or 2)
     teacher_id = request.data.get("teacher")
 
-    if lesson_type not in dict(Schedule.LESSON_TYPE_CHOICES):
+    legacy_map = {'regular': Lesson.LessonType.GROUP if request.data.get('group') else Lesson.LessonType.INDIVIDUAL, 'single': Lesson.LessonType.SINGLE_GROUP if request.data.get('group') else Lesson.LessonType.SINGLE_INDIVIDUAL}
+    lesson_type = legacy_map.get(lesson_type, lesson_type)
+    if lesson_type not in dict(Lesson.LessonType.choices):
         return Response({"error": "Выберите корректный тип занятия"}, status=status.HTTP_400_BAD_REQUEST)
 
     if not classdate_start:
@@ -168,47 +150,41 @@ def create_crm_lesson(request):
     if lessons_count not in (1, 2):
         return Response({"error": "Занятие может длиться только 1 или 2 академических часа"}, status=status.HTTP_400_BAD_REQUEST)
 
-    payload = {
-        "lesson_type": lesson_type,
-        "classdateStart": classdate_start,
-        "classdateEnd": get_lesson_end_time(classdate_start.time(), lessons_count),
-        "teacher": teacher_id,
-        "status": "scheduled",
-        "is_single": lesson_type == Schedule.LESSON_TYPE_SINGLE,
-    }
+    if not ends_at:
+        from datetime import datetime
+        ends_at = timezone.make_aware(datetime.combine(classdate_start.date(), get_lesson_end_time(classdate_start.time(), lessons_count)))
 
     selected_student_ids = request.data.get("students") or []
     if not isinstance(selected_student_ids, list):
         selected_student_ids = []
 
-    if request.data.get("group"):
-        payload["group"] = request.data.get("group")
-    else:
-        payload["student"] = request.data.get("student")
-        payload["course"] = request.data.get("course")
-
-    serializer = ScheduleSerializer(data=payload)
-    if not serializer.is_valid():
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
     try:
-        lesson = serializer.save()
-        lesson.full_clean()
-        lesson.save()
-        if lesson.group_id and selected_student_ids:
-            allowed_students = CustomUser.objects.filter(
-                id__in=selected_student_ids,
-                role=UserRole.STUDENT,
-                subscriptions__status='active',
-                subscriptions__tariff__course=lesson.group.course,
-                subscriptions__tariff__subscription_type='group',
-                subscriptions__end_date__gte=timezone.now().date(),
-            ).distinct()
-            lesson.students.set(allowed_students)
+        teacher = CustomUser.objects.get(id=teacher_id, role=UserRole.TEACHER)
+        group = SchoolGroups.objects.get(id=request.data.get('group')) if request.data.get('group') else None
+        course = group.course if group else Courses.objects.get(id=request.data.get('course'))
+        participant_ids = selected_student_ids or request.data.get('participants') or ([request.data.get('student')] if request.data.get('student') else [])
+        participants = list(CustomUser.objects.filter(id__in=participant_ids, role=UserRole.STUDENT))
+        lesson = LessonService.create_lesson(lesson_type=lesson_type, group=group, course=course, teacher=teacher, starts_at=classdate_start, ends_at=ends_at, participants=participants, created_by=request.user)
+        if lesson.is_single:
+            from sales.services import OrderService
+            amount = request.data.get("single_lesson_amount") or request.data.get("amount")
+            if amount:
+                order = OrderService.create_single_lesson_order(
+                    lesson=lesson,
+                    student=participants[0] if participants else None,
+                    amount=amount,
+                    payment_method=request.data.get("single_lesson_payment_method", "cash"),
+                    paid=request.data.get("single_lesson_paid", True) is not False,
+                    created_by=request.user,
+                    comment="Продажа разового занятия через API",
+                )
+                item = order.items.first()
+                if item:
+                    lesson.participants.update(order_item=item)
     except Exception as exc:
         return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-    return Response({"message": "Занятие создано", "lesson": ScheduleSerializer(lesson).data}, status=status.HTTP_201_CREATED)
+    return Response({"message": "Занятие создано", "lesson": LessonSerializer(lesson).data}, status=status.HTTP_201_CREATED)
 
 
 @api_view(["GET"])
@@ -244,14 +220,13 @@ def cancel_lesson(request, lesson_id):
         return Response({"error": "Только администратор может отменять занятия"}, status=status.HTTP_403_FORBIDDEN)
 
     try:
-        lesson = Schedule.objects.get(id=lesson_id)
-    except Schedule.DoesNotExist:
+        lesson = Lesson.objects.get(id=lesson_id)
+    except Lesson.DoesNotExist:
         return Response({"error": "Занятие не найдено"}, status=status.HTTP_404_NOT_FOUND)
 
     # Проверяем, есть ли отметки посещаемости
     try:
-        from subscriptions.models import LessonAttendance
-        attendance_count = LessonAttendance.objects.filter(schedule=lesson).count()
+        attendance_count = LessonParticipant.objects.filter(lesson=lesson, lessons_charged=True).count()
         
         if attendance_count > 0:
             return Response({
@@ -260,11 +235,9 @@ def cancel_lesson(request, lesson_id):
     except Exception:
         pass
 
-    lesson.status = "cancelled"
-    lesson.cancel_reason = (request.data.get("reason") or "").strip()
-    lesson.save(update_fields=["status", "cancel_reason"])
+    LessonService.cancel_lesson(lesson, (request.data.get("reason") or "").strip(), request.user)
 
-    return Response({"message": "Занятие отменено", "lesson": ScheduleSerializer(lesson).data})
+    return Response({"message": "Занятие отменено", "lesson": LessonSerializer(lesson).data})
 
 
 @api_view(["PATCH"])
@@ -273,11 +246,11 @@ def reschedule_lesson(request, lesson_id):
         return Response({"error": "Только администратор может переносить занятия"}, status=status.HTTP_403_FORBIDDEN)
 
     try:
-        lesson = Schedule.objects.get(id=lesson_id)
-    except Schedule.DoesNotExist:
+        lesson = Lesson.objects.get(id=lesson_id)
+    except Lesson.DoesNotExist:
         return Response({"error": "Занятие не найдено"}, status=status.HTTP_404_NOT_FOUND)
 
-    new_start = parse_datetime(request.data.get("classdateStart") or "")
+    new_start = parse_datetime(request.data.get("starts_at") or request.data.get("classdateStart") or "")
     lessons_count = request.data.get("lessons_count")
     lesson_type = request.data.get("lesson_type") or lesson.lesson_type
     
@@ -296,48 +269,13 @@ def reschedule_lesson(request, lesson_id):
     if lessons_count not in (1, 2):
         return Response({"error": "Занятие может длиться только 1 или 2 академических часа"}, status=status.HTTP_400_BAD_REQUEST)
 
-    if lesson_type not in dict(Schedule.LESSON_TYPE_CHOICES):
+    if lesson_type not in dict(Lesson.LessonType.choices):
         return Response({"error": "Выберите корректный тип занятия"}, status=status.HTTP_400_BAD_REQUEST)
 
-    lesson.lesson_type = lesson_type
-    lesson.is_single = lesson_type == Schedule.LESSON_TYPE_SINGLE
-
-    if request.data.get("group") or lesson.group_id:
-        group_id = request.data.get("group") or (lesson.group_id if lesson.group_id else None)
-        if not group_id:
-            return Response({"error": "Выберите группу"}, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            lesson.group = SchoolGroups.objects.get(id=group_id)
-        except SchoolGroups.DoesNotExist:
-            return Response({"error": "Группа не найдена"}, status=status.HTTP_404_NOT_FOUND)
-        lesson.student = None
-        lesson.course = lesson.group.course
-    else:
-        student_id = request.data.get("student") or lesson.student_id
-        course_id = request.data.get("course") or lesson.course_id
-        if not student_id or not course_id:
-            return Response({"error": "Выберите ученика и курс"}, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            lesson.student = CustomUser.objects.get(id=student_id, role=UserRole.STUDENT)
-        except CustomUser.DoesNotExist:
-            return Response({"error": "Ученик не найден"}, status=status.HTTP_404_NOT_FOUND)
-        try:
-            lesson.course = Courses.objects.get(id=course_id)
-        except Courses.DoesNotExist:
-            return Response({"error": "Курс не найден"}, status=status.HTTP_404_NOT_FOUND)
-        lesson.group = None
-
-    if not lesson.original_classdateStart:
-        lesson.original_classdateStart = lesson.classdateStart
-        lesson.original_classdateEnd = lesson.classdateEnd
-
-    lesson.classdateStart = new_start
-    lesson.classdateEnd = get_lesson_end_time(new_start.time(), lessons_count)
-    lesson.status = "rescheduled"
-    lesson.reschedule_reason = (request.data.get("reason") or "").strip()
-    lesson.save()
-
-    return Response({"message": "Занятие перенесено", "lesson": ScheduleSerializer(lesson).data})
+    from datetime import datetime
+    new_end = parse_datetime(request.data.get('ends_at') or '') or timezone.make_aware(datetime.combine(new_start.date(), get_lesson_end_time(new_start.time(), lessons_count)))
+    LessonService.reschedule_lesson(lesson, new_start, new_end, (request.data.get("reason") or "").strip(), request.user)
+    return Response({"message": "Занятие перенесено", "lesson": LessonSerializer(lesson).data})
 
 
 @api_view(["GET"])
@@ -346,61 +284,38 @@ def lesson_attendance_context(request, lesson_id):
         return Response({"error": "Только администратор может просматривать посещаемость занятия"}, status=status.HTTP_403_FORBIDDEN)
 
     try:
-        lesson = Schedule.objects.select_related("group", "group__course", "teacher", "student", "course").get(id=lesson_id)
-    except Schedule.DoesNotExist:
+        lesson = Lesson.objects.select_related("group", "group__course", "teacher", "course").prefetch_related('participants', 'participants__student', 'participants__subscription', 'participants__subscription__tariff', 'participants__order_item').get(id=lesson_id)
+    except Lesson.DoesNotExist:
         return Response({"error": "Занятие не найдено"}, status=status.HTTP_404_NOT_FOUND)
 
-    memberships = []
-    individual_student = None
-    source_students = []
-
-    if lesson.group:
-        explicit_students = list(lesson.students.all().order_by("last_name", "first_name"))
-        if explicit_students:
-            source_students = explicit_students
-        else:
-            memberships = (
-                StudentGroups.objects
-                .select_related("student")
-                .filter(group=lesson.group)
-                .order_by("student__last_name", "student__first_name")
-            )
-            source_students = [membership.student for membership in memberships]
-    elif lesson.student:
-        individual_student = lesson.student
-
-    try:
-        from subscriptions.models import LessonAttendance
-    except Exception:
-        LessonAttendance = None
-
-    attendance_by_student = {}
-    if LessonAttendance:
-        attendance_by_student = {
-            item.student_id: item
-            for item in LessonAttendance.objects.filter(schedule=lesson)
-        }
-
-    students = []
-    if individual_student:
-        source_students = [individual_student]
-
-    for student in source_students:
-        attendance = attendance_by_student.get(student.id)
-        students.append({
-            "id": student.id,
-            "name": student.get_full_name() or student.username,
-            "phone": student.phone or "",
-            "attendance": None if not attendance else {
-                "id": attendance.id,
-                "status": attendance.status,
-                "status_display": attendance.get_status_display(),
-                "lessons_count": attendance.lessons_count,
-                "lesson_deducted": attendance.lesson_deducted,
-            },
-        })
-
     return Response({
-        "lesson": ScheduleSerializer(lesson).data,
-        "students": students,
+        "lesson": LessonSerializer(lesson).data,
+        "participants": LessonParticipantSerializer(lesson.participants.all(), many=True).data,
     })
+
+
+@api_view(["PATCH"])
+def mark_participant_attendance(request, participant_id):
+    if request.user.role not in [UserRole.ADMIN, UserRole.TEACHER]:
+        return Response({"error": "Только администратор или учитель могут отмечать посещаемость"}, status=status.HTTP_403_FORBIDDEN)
+    try:
+        participant = LessonParticipant.objects.select_related('lesson', 'student', 'subscription').get(id=participant_id)
+    except LessonParticipant.DoesNotExist:
+        return Response({"error": "Участник занятия не найден"}, status=status.HTTP_404_NOT_FOUND)
+    try:
+        participant = LessonService.mark_participant_attendance(participant, request.data.get('attendance_status') or request.data.get('status'), request.data.get('lessons_to_charge') or request.data.get('lessons_count') or 0, request.user, request.data.get('notes', ''))
+    except Exception as exc:
+        return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    return Response({"message": "Посещаемость отмечена", "participant": LessonParticipantSerializer(participant).data})
+
+
+@api_view(["POST"])
+def cancel_participant_attendance(request, participant_id):
+    if request.user.role != UserRole.ADMIN:
+        return Response({"error": "Только администратор может отменять посещаемость"}, status=status.HTTP_403_FORBIDDEN)
+    try:
+        participant = LessonParticipant.objects.select_related('lesson', 'student', 'subscription').get(id=participant_id)
+    except LessonParticipant.DoesNotExist:
+        return Response({"error": "Участник занятия не найден"}, status=status.HTTP_404_NOT_FOUND)
+    participant = LessonService.cancel_participant_attendance(participant, request.user)
+    return Response({"message": "Отметка посещаемости отменена", "participant": LessonParticipantSerializer(participant).data})

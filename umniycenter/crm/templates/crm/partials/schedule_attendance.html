@@ -6,9 +6,9 @@
             <div class="crm-attendance-item" data-student-id="{{ row.student.id }}">
                 <div class="crm-attendance-item__info"><strong>{{ row.student.get_full_name|default:row.student.username }}</strong><span>{{ row.student.phone|default:'-' }}</span></div>
                 {% with attendance=row.attendance student=row.student %}
-                {% if attendance %}
-                    <span class="crm-status-badge crm-status-badge--{% if attendance.status == 'present' %}scheduled{% else %}archive{% endif %}">{{ attendance.get_status_display }}</span>
-                    {% if attendance.lesson_deducted %}<div class="crm-table-meta">Списано занятий: {{ attendance.lessons_count }}</div>{% endif %}
+                {% if attendance and attendance.attendance_status != 'planned' %}
+                    <span class="crm-status-badge crm-status-badge--{% if attendance.attendance_status == 'present' %}scheduled{% else %}archive{% endif %}">{{ attendance.get_attendance_status_display }}</span>
+                    {% if attendance.lessons_charged %}<div class="crm-table-meta">Списано занятий: {{ attendance.lessons_to_charge }}</div>{% endif %}
                     <button class="crm-btn crm-btn--secondary crm-btn--sm" type="button" hx-post="{% url 'crm:schedule_attendance_cancel' attendance.id %}" hx-target="#lessonAttendanceHost" hx-swap="outerHTML">Отменить</button>
                 {% else %}
                     <form class="crm-attendance-controls" hx-post="{% url 'crm:schedule_attendance_mark' selected_lesson.id student.id %}" hx-target="#lessonAttendanceHost" hx-swap="outerHTML">

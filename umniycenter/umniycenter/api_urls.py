@@ -19,6 +19,7 @@ urlpatterns = [
     path("courses/", include('courses.api.urls')),
     path("groups/", include('groups.api.urls')),
     path("schedule/", include('schedule.api.urls')),
+    path("sales/", include('sales.api.urls')),
     path("dashboard/", include('crm.api.urls')),
     path("", include('accounts.api.urls')),
     path("subscriptions/", include('subscriptions.urls')),

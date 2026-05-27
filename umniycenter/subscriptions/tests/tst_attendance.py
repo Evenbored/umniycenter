@@ -6,7 +6,8 @@ import pytest
 from django.test import TestCase
 from django.core.exceptions import ValidationError
 from datetime import datetime, timedelta
-from subscriptions.models import LessonAttendance, Subscription
+from schedule.models import LessonParticipant as LessonAttendance
+from subscriptions.models import Subscription
 from tests.utils import (
     ScheduleFactory, StudentFactory, SubscriptionFactory,
     create_schedule_with_attendance, SchoolGroupFactory

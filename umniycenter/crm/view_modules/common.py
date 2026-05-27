@@ -26,10 +26,10 @@ from students.api.serializers import StudentUpdateSerializer
 from subscriptions.models import Payment, Subscription, Tariff
 from subscriptions.payment_service import PaymentService
 from subscriptions.api.serializers import PaymentSerializer
-from schedule.models import Schedule
+from schedule.models import Lesson, LessonParticipant, Schedule
 from schedule.models import GroupScheduleTemplate
 from communication.models import Message, Ticket, TicketStatus
-from sales.models import Lead, LeadStatus
+from sales.models import Lead, LeadStatus, Order
 from tasks.models import Task, TaskPriority, TaskStatus, TaskType
 from tasks.services import TaskService
 from crm.api.views import build_dashboard_payload, parse_dashboard_date

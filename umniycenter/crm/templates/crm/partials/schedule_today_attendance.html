@@ -8,13 +8,13 @@
                 {% for row in attendance_rows %}
                     <article class="crm-today-student-card" data-student-id="{{ row.student.id }}" hx-get="{% url 'crm:schedule_today_student' selected_lesson.id row.student.id %}" hx-target="#todayStudentHost" hx-swap="outerHTML">
                         <div class="crm-today-student-card__info"><strong>{{ row.student.get_full_name|default:row.student.username }}</strong><span>{{ row.student.phone|default:'-' }}</span></div>
-                        {% if row.attendance %}<span class="crm-attendance-toggle is-{{ row.attendance.status }}">{{ row.attendance.get_status_display }}</span>{% else %}<span class="crm-attendance-toggle">Не отмечен</span>{% endif %}
+                        {% if row.attendance and row.attendance.attendance_status != 'planned' %}<span class="crm-attendance-toggle is-{{ row.attendance.attendance_status }}">{{ row.attendance.get_attendance_status_display }}</span>{% else %}<span class="crm-attendance-toggle">Не отмечен</span>{% endif %}
                         <form class="crm-attendance-controls" hx-post="{% url 'crm:schedule_attendance_mark' selected_lesson.id row.student.id %}" hx-target="#todayAttendanceHost" hx-swap="outerHTML" onclick="event.stopPropagation()">
                             <select name="status" class="crm-select crm-select--sm"><option value="present">Был</option><option value="absent">Отсутствовал</option><option value="excused">Уважительная причина</option></select>
                             <select name="lessons_count" class="crm-select crm-select--sm"><option value="1">1</option><option value="2" selected>2</option></select>
                             <button class="crm-btn crm-btn--primary crm-btn--sm" type="submit">OK</button>
                         </form>
-                        {% if row.attendance %}<button class="crm-btn crm-btn--secondary crm-btn--sm" type="button" hx-post="{% url 'crm:schedule_attendance_cancel' row.attendance.id %}" hx-target="#todayAttendanceHost" hx-swap="outerHTML" onclick="event.stopPropagation()">Отменить</button>{% endif %}
+                        {% if row.attendance and row.attendance.attendance_status != 'planned' %}<button class="crm-btn crm-btn--secondary crm-btn--sm" type="button" hx-post="{% url 'crm:schedule_attendance_cancel' row.attendance.id %}" hx-target="#todayAttendanceHost" hx-swap="outerHTML" onclick="event.stopPropagation()">Отменить</button>{% endif %}
                     </article>
                 {% endfor %}
             {% else %}

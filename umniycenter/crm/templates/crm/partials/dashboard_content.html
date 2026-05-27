@@ -176,8 +176,7 @@
             <div class="balance-label-section">
                 <div class="balance-main-label">Доход за день</div>
                 <div class="balance-sub-labels">
-                    <span>Нал</span>
-                    <span>Безнал</span>
+                    <span>Оплаченных платежей: <strong x-text="dashboard.balance.payments_count">{{ dashboard.balance.payments_count }}</strong></span>
                 </div>
             </div>
             <div class="balance-content">
@@ -249,7 +248,7 @@
             <template x-for="item in dashboard.groupAttendances" :key="item.group_name">
                 <div class="attendance-list-item">
                     <span class="attendance-group-name" x-text="item.group_name"></span>
-                    <span class="attendance-stats" x-text="`${item.total} (${item.present}/${item.absent})`"></span>
+                    <span class="attendance-stats" x-text="`${item.total} (${item.present}/${item.absent}/${item.excused || 0})`"></span>
                 </div>
             </template>
         </div>
@@ -267,7 +266,7 @@
             <template x-for="item in dashboard.individualAttendances" :key="item.student_name + item.status">
                 <div class="attendance-list-item">
                     <span class="attendance-group-name" x-text="item.student_name"></span>
-                    <span class="attendance-stats" x-text="`${item.present + item.absent} (${item.present}/${item.absent})`"></span>
+                    <span class="attendance-stats" x-text="item.status_display || item.status"></span>
                 </div>
             </template>
         </div>

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Tariff, Subscription, Payment, LessonAttendance, SubscriptionFreeze, SubscriptionLog
+from .models import Tariff, Subscription, Payment, Refund, LessonAttendance, SubscriptionFreeze, SubscriptionLog
 
 
 @admin.register(Tariff)
@@ -34,16 +34,23 @@ class SubscriptionAdmin(admin.ModelAdmin):
 
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
-    list_display = ['id', 'subscription', 'parent', 'amount', 'payment_method', 'status', 'paid_at', 'created_at']
+    list_display = ['id', 'order', 'subscription', 'parent', 'amount', 'payment_method', 'status', 'paid_at', 'created_at']
     list_filter = ['status', 'payment_method', 'paid_at']
     search_fields = ['parent__username', 'parent__first_name', 'parent__last_name', 'transaction_id']
     readonly_fields = ['created_at', 'updated_at']
     fields = [
-        'subscription', 'parent',
+        'order', 'subscription', 'parent',
         'amount', 'payment_method', 'status',
         'transaction_id', 'notes',
         'paid_at', 'created_at', 'updated_at'
     ]
+
+
+@admin.register(Refund)
+class RefundAdmin(admin.ModelAdmin):
+    list_display = ['id', 'payment', 'order', 'amount', 'status', 'created_at']
+    list_filter = ['status', 'created_at']
+    search_fields = ['payment__transaction_id', 'payment__yookassa_payment_id', 'reason']
 
 
 @admin.register(LessonAttendance)

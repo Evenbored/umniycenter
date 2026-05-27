@@ -7,7 +7,7 @@ from datetime import timedelta
 from accounts.models import CustomUser, UserRole
 from courses.models import Courses
 from groups.models import SchoolGroups
-from schedule.models import Schedule
+from schedule.models import Lesson, Schedule
 
 
 class Tariff(models.Model):
@@ -289,11 +289,21 @@ class Payment(models.Model):
         ('canceled', 'Отменен'),
     ]
     
+    order = models.ForeignKey(
+        'sales.Order',
+        on_delete=models.CASCADE,
+        related_name='payments',
+        null=True,
+        blank=True,
+        verbose_name='Заказ'
+    )
     subscription = models.ForeignKey(
         Subscription,
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         related_name='payments',
-        verbose_name="Подписка"
+        verbose_name="Подписка (legacy)"
     )
     parent = models.ForeignKey(
         CustomUser,
@@ -356,6 +366,29 @@ class Payment(models.Model):
         return f"Платеж #{self.id} - {self.parent.get_full_name()} - {self.amount} руб. ({self.get_status_display()})"
 
 
+class Refund(models.Model):
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Ожидает'
+        COMPLETED = 'completed', 'Выполнен'
+        FAILED = 'failed', 'Ошибка'
+        CANCELED = 'canceled', 'Отменен'
+
+    payment = models.ForeignKey(Payment, on_delete=models.CASCADE, related_name='refunds', verbose_name='Платеж')
+    order = models.ForeignKey('sales.Order', on_delete=models.CASCADE, related_name='refunds', null=True, blank=True, verbose_name='Заказ')
+    amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Сумма')
+    reason = models.TextField(blank=True, verbose_name='Причина')
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING, verbose_name='Статус')
+    external_refund_id = models.CharField(max_length=200, blank=True, null=True, verbose_name='Внешний ID возврата')
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_refunds', verbose_name='Кто создал')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Возврат'
+        verbose_name_plural = 'Возвраты'
+        ordering = ['-created_at']
+
+
 class SubscriptionFreeze(models.Model):
     subscription = models.ForeignKey(Subscription, on_delete=models.CASCADE, related_name='freezes', verbose_name="Абонемент")
     start_date = models.DateField(verbose_name="Дата начала")
@@ -392,6 +425,7 @@ class SubscriptionLog(models.Model):
     lessons_delta = models.IntegerField(default=0, verbose_name="Изменение занятий")
     balance_after = models.IntegerField(default=0, verbose_name="Остаток после операции")
     related_lesson = models.ForeignKey(Schedule, on_delete=models.SET_NULL, null=True, blank=True, related_name='subscription_logs', verbose_name="Занятие")
+    related_new_lesson = models.ForeignKey(Lesson, on_delete=models.SET_NULL, null=True, blank=True, related_name='subscription_logs', verbose_name="Занятие (new)")
     comment = models.TextField(blank=True, verbose_name="Комментарий")
     created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='subscription_logs', verbose_name="Кто выполнил")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -402,13 +436,14 @@ class SubscriptionLog(models.Model):
         ordering = ['-created_at']
 
     @classmethod
-    def log(cls, subscription, action, lessons_delta=0, related_lesson=None, comment='', created_by=None):
+    def log(cls, subscription, action, lessons_delta=0, related_lesson=None, related_new_lesson=None, comment='', created_by=None):
         return cls.objects.create(
             subscription=subscription,
             action=action,
             lessons_delta=lessons_delta,
             balance_after=subscription.lessons_remaining,
             related_lesson=related_lesson,
+            related_new_lesson=related_new_lesson,
             comment=comment,
             created_by=created_by,
         )

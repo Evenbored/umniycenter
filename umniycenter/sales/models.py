@@ -4,6 +4,8 @@ from django.utils import timezone
 from accounts.models import CustomUser, LeadSource, UserRole
 from courses.models import Courses
 from main.models import ParticipantRequest
+from schedule.models import Lesson, Schedule
+from subscriptions.models import Payment, Subscription, Tariff
 
 
 class LeadStatus(models.TextChoices):
@@ -94,3 +96,78 @@ class Lead(models.Model):
         self.converted_parent = parent
         self.converted_at = timezone.now()
         self.save(update_fields=['status', 'converted_student', 'converted_parent', 'converted_at', 'updated_at'])
+
+
+class OrderStatus(models.TextChoices):
+    DRAFT = 'draft', 'Черновик'
+    PENDING = 'pending', 'Ожидает оплаты'
+    PENDING_PAYMENT = 'pending_payment', 'Ожидает оплаты'
+    PARTIALLY_PAID = 'partially_paid', 'Частично оплачен'
+    PAID = 'paid', 'Оплачен'
+    CANCELED = 'canceled', 'Отменен'
+    REFUNDED = 'refunded', 'Возврат'
+
+
+class OrderItemType(models.TextChoices):
+    SUBSCRIPTION = 'subscription', 'Абонемент'
+    SINGLE_GROUP = 'single_group', 'Групповое разовое занятие'
+    SINGLE_INDIVIDUAL = 'single_individual', 'Индивидуальное разовое занятие'
+    PRODUCT = 'product', 'Товар'
+    RENT = 'rent', 'Аренда'
+    ACCOUNT_TOPUP = 'account_topup', 'Пополнение лицевого счета'
+
+
+class Order(models.Model):
+    parent = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='sales_orders', verbose_name='Покупатель')
+    student = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='student_sales_orders', verbose_name='Ученик')
+    status = models.CharField(max_length=24, choices=OrderStatus.choices, default=OrderStatus.PENDING, verbose_name='Статус')
+    payment = models.OneToOneField(Payment, on_delete=models.SET_NULL, null=True, blank=True, related_name='legacy_order', verbose_name='Связанный платеж абонемента')
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name='Сумма')
+    paid_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name='Оплачено')
+    paid_at = models.DateTimeField(null=True, blank=True, verbose_name='Дата оплаты')
+    comment = models.TextField(blank=True, verbose_name='Комментарий')
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_sales_orders', verbose_name='Кто создал')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Заказ/продажа'
+        verbose_name_plural = 'Заказы/продажи'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status', '-created_at']),
+            models.Index(fields=['paid_at']),
+        ]
+
+    def __str__(self):
+        return f'Заказ #{self.id} · {self.total_amount} ₽'
+
+
+class OrderItem(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items', verbose_name='Заказ')
+    item_type = models.CharField(max_length=32, choices=OrderItemType.choices, verbose_name='Тип позиции')
+    title = models.CharField(max_length=255, verbose_name='Название')
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name='Цена за единицу')
+    amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Сумма')
+    quantity = models.PositiveIntegerField(default=1, verbose_name='Количество')
+    course = models.ForeignKey(Courses, on_delete=models.SET_NULL, null=True, blank=True, related_name='order_items', verbose_name='Курс')
+    tariff = models.ForeignKey(Tariff, on_delete=models.SET_NULL, null=True, blank=True, related_name='order_items', verbose_name='Тариф')
+    subscription = models.ForeignKey(Subscription, on_delete=models.SET_NULL, null=True, blank=True, related_name='order_items', verbose_name='Абонемент')
+    schedule = models.ForeignKey(Schedule, on_delete=models.SET_NULL, null=True, blank=True, related_name='order_items', verbose_name='Занятие')
+    lesson = models.ForeignKey(Lesson, on_delete=models.SET_NULL, null=True, blank=True, related_name='order_items', verbose_name='Занятие (new)')
+    metadata = models.JSONField(default=dict, blank=True, verbose_name='Дополнительные данные')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Позиция заказа'
+        verbose_name_plural = 'Позиции заказов'
+        ordering = ['id']
+        indexes = [
+            models.Index(fields=['item_type', 'created_at']),
+            models.Index(fields=['schedule']),
+            models.Index(fields=['lesson']),
+            models.Index(fields=['subscription']),
+        ]
+
+    def __str__(self):
+        return f'{self.get_item_type_display()}: {self.title}'

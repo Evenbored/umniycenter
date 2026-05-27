@@ -7,13 +7,13 @@ from django.test import TestCase
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from datetime import timedelta, time
-from schedule.models import Schedule, GroupScheduleTemplate
+from schedule.models import Lesson, GroupScheduleTemplate
 from tests.utils import ScheduleFactory, GroupScheduleTemplateFactory, SchoolGroupFactory, TeacherFactory
 
 
 @pytest.mark.unit
 class ScheduleModelTest(TestCase):
-    """Test cases for Schedule model."""
+    """Test cases for Lesson model (legacy Schedule naming kept)."""
     
     def test_schedule_creation(self):
         """Test creating a schedule with valid data."""
@@ -22,11 +22,13 @@ class ScheduleModelTest(TestCase):
         start_time = timezone.now() + timedelta(days=1, hours=10)
         end_time = (start_time + timedelta(minutes=45)).time()
         
-        schedule = Schedule.objects.create(
+        schedule = Lesson.objects.create(
             group=group,
+            course=group.course,
             teacher=teacher,
-            classdateStart=start_time,
-            classdateEnd=end_time,
+            starts_at=start_time,
+            ends_at=start_time + timedelta(minutes=45),
+            lesson_type=Lesson.LessonType.GROUP,
             status='scheduled'
         )
         
@@ -51,11 +53,14 @@ class ScheduleModelTest(TestCase):
         statuses = ['scheduled', 'completed', 'cancelled', 'rescheduled']
         
         for status_choice in statuses:
-            schedule = Schedule.objects.create(
+            lesson_start = start_time + timedelta(hours=statuses.index(status_choice))
+            schedule = Lesson.objects.create(
                 group=group,
+                course=group.course,
                 teacher=teacher,
-                classdateStart=start_time + timedelta(hours=statuses.index(status_choice)),
-                classdateEnd=end_time,
+                starts_at=lesson_start,
+                ends_at=lesson_start + timedelta(minutes=45),
+                lesson_type=Lesson.LessonType.GROUP,
                 status=status_choice
             )
             self.assertEqual(schedule.status, status_choice)
@@ -66,11 +71,13 @@ class ScheduleModelTest(TestCase):
         past_time = timezone.now() - timedelta(days=1)
         end_time = (past_time + timedelta(minutes=45)).time()
         
-        schedule = Schedule.objects.create(
+        schedule = Lesson.objects.create(
             group=group,
+            course=group.course,
             teacher=group.teacher,
-            classdateStart=past_time,
-            classdateEnd=end_time,
+            starts_at=past_time,
+            ends_at=past_time + timedelta(minutes=45),
+            lesson_type=Lesson.LessonType.GROUP,
             status='scheduled'
         )
         
@@ -82,11 +89,13 @@ class ScheduleModelTest(TestCase):
         future_time = timezone.now() + timedelta(days=1)
         end_time = (future_time + timedelta(minutes=45)).time()
         
-        schedule = Schedule.objects.create(
+        schedule = Lesson.objects.create(
             group=group,
+            course=group.course,
             teacher=group.teacher,
-            classdateStart=future_time,
-            classdateEnd=end_time,
+            starts_at=future_time,
+            ends_at=future_time + timedelta(minutes=45),
+            lesson_type=Lesson.LessonType.GROUP,
             status='scheduled'
         )
         
@@ -98,11 +107,13 @@ class ScheduleModelTest(TestCase):
         
         # Past scheduled lesson should be 'completed'
         past_time = timezone.now() - timedelta(days=1)
-        past_schedule = Schedule.objects.create(
+        past_schedule = Lesson.objects.create(
             group=group,
+            course=group.course,
             teacher=group.teacher,
-            classdateStart=past_time,
-            classdateEnd=(past_time + timedelta(minutes=45)).time(),
+            starts_at=past_time,
+            ends_at=past_time + timedelta(minutes=45),
+            lesson_type=Lesson.LessonType.GROUP,
             status='scheduled'
         )
         
@@ -117,11 +128,13 @@ class ScheduleModelTest(TestCase):
         group = SchoolGroupFactory()
         student = StudentFactory()  # Wrong role
         
-        schedule = Schedule(
+        schedule = Lesson(
             group=group,
+            course=group.course,
             teacher=student,
-            classdateStart=timezone.now() + timedelta(days=1),
-            classdateEnd=time(11, 0),
+            starts_at=timezone.now() + timedelta(days=1),
+            ends_at=timezone.now() + timedelta(days=1, hours=1),
+            lesson_type=Lesson.LessonType.GROUP,
             status='scheduled'
         )
         
@@ -133,11 +146,13 @@ class ScheduleModelTest(TestCase):
         group = SchoolGroupFactory()
         teacher = TeacherFactory()
         
-        schedule = Schedule(
+        schedule = Lesson(
             group=group,
+            course=group.course,
             teacher=teacher,
-            classdateStart=timezone.now() + timedelta(days=1),
-            classdateEnd=time(11, 0),
+            starts_at=timezone.now() + timedelta(days=1),
+            ends_at=timezone.now() + timedelta(days=1, hours=1),
+            lesson_type=Lesson.LessonType.GROUP,
             status='scheduled'
         )
         
@@ -153,11 +168,13 @@ class ScheduleModelTest(TestCase):
         original_start = timezone.now() + timedelta(days=1)
         original_end = (original_start + timedelta(minutes=45)).time()
         
-        schedule = Schedule.objects.create(
+        schedule = Lesson.objects.create(
             group=group,
+            course=group.course,
             teacher=group.teacher,
-            classdateStart=original_start,
-            classdateEnd=original_end,
+            starts_at=original_start,
+            ends_at=original_start + timedelta(minutes=45),
+            lesson_type=Lesson.LessonType.GROUP,
             status='scheduled'
         )
         
@@ -212,7 +229,7 @@ class ScheduleModelTest(TestCase):
             classdateStart=timezone.now() + timedelta(days=3)
         )
         
-        group_schedules = Schedule.objects.filter(group=group)
+        group_schedules = Lesson.objects.filter(group=group)
         self.assertEqual(group_schedules.count(), 3)
 
 

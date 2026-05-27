@@ -247,7 +247,7 @@ def get_teacher_for_drawer(teacher_id):
 
 def get_teacher_schedule(teacher):
     from django.utils import timezone
-    return Schedule.objects.filter(teacher=teacher, classdateStart__gte=timezone.now()).select_related("group", "group__course", "course").order_by("classdateStart")[:10]
+    return Lesson.objects.filter(teacher=teacher, starts_at__gte=timezone.now()).select_related("group", "group__course", "course").order_by("starts_at")[:10]
 
 
 def get_teachers_context(request, selected_teacher=None, error=None):
@@ -343,9 +343,9 @@ def validate_teacher_payload(data, teacher=None, creating=False):
 
 
 def get_student_payments(student):
-    return Payment.objects.filter(subscription__student=student).select_related(
-        "parent", "subscription", "subscription__tariff", "subscription__tariff__course"
-    ).order_by("-created_at")
+    return Payment.objects.filter(Q(subscription__student=student) | Q(order__student=student) | Q(order__items__subscription__student=student)).select_related(
+        "parent", "order", "order__student", "subscription", "subscription__tariff", "subscription__tariff__course"
+    ).prefetch_related("order__items", "order__items__subscription", "order__items__tariff").distinct().order_by("-created_at")
 
 
 def build_buy_tariff_context(request, student, data=None, error=None):
@@ -643,7 +643,8 @@ def student_confirm_payment_partial(request, student_id, payment_id):
     student = get_student_for_drawer(student_id)
     try:
         payment = PaymentService.confirm_offline_payment(payment_id, confirmed_by=request.user)
-        if payment.subscription.student_id != student.id:
+        payment_student_id = payment.subscription.student_id if payment.subscription_id else payment.order.student_id if payment.order_id else None
+        if payment_student_id != student.id:
             raise ValueError("Платёж не относится к выбранному ученику")
     except Exception as exc:
         return render(request, "crm/partials/student_payments.html", {"selected_student": student, "student_payments": get_student_payments(student), "form_error": str(exc)}, status=400)
@@ -661,7 +662,8 @@ def student_cancel_payment_partial(request, student_id, payment_id):
     reason = (request.POST.get("reason") or "Оплата не поступила").strip()
     try:
         payment = PaymentService.cancel_payment(payment_id, canceled_by=request.user, reason=reason)
-        if payment.subscription.student_id != student.id:
+        payment_student_id = payment.subscription.student_id if payment.subscription_id else payment.order.student_id if payment.order_id else None
+        if payment_student_id != student.id:
             raise ValueError("Платёж не относится к выбранному ученику")
     except Exception as exc:
         return render(request, "crm/partials/student_payments.html", {"selected_student": student, "student_payments": get_student_payments(student), "form_error": str(exc)}, status=400)
@@ -675,9 +677,7 @@ def student_cancel_payment_partial(request, student_id, payment_id):
 
 
 def student_buy_tariff_partial(request, student_id):
-    from datetime import timedelta
-    from django.utils import timezone
-    from subscriptions.models import Subscription, SubscriptionLog
+    from subscriptions.models import SubscriptionLog
 
     student = get_student_for_drawer(student_id)
     try:
@@ -707,30 +707,18 @@ def student_buy_tariff_partial(request, student_id):
         if tariff.subscription_type == Tariff.SUBSCRIPTION_TYPE_INDIVIDUAL and group:
             raise ValueError("Индивидуальный абонемент не привязывается к группе")
 
-        with transaction.atomic():
-            subscription = Subscription.objects.create(
-                student=student,
-                parent=parent,
-                tariff=tariff,
-                group=group if tariff.subscription_type == Tariff.SUBSCRIPTION_TYPE_GROUP else None,
-                lessons_total=tariff.lessons_count,
-                lessons_used=0,
-                start_date=timezone.now().date(),
-                end_date=timezone.now().date() + timedelta(days=tariff.validity_days),
-                status="pending",
-                allow_negative_lessons=tariff.allow_negative_lessons,
-                negative_limit=tariff.default_negative_limit,
-                allow_group_to_individual=tariff.allow_group_to_individual,
-                group_to_individual_ratio=tariff.group_to_individual_ratio,
-            )
-            SubscriptionLog.log(subscription, 'created', comment='Оформление тарифа из CRM', created_by=request.user)
-            payment_result = PaymentService.create_payment(subscription_id=subscription.id, parent_id=parent.id, payment_method=payment_method)
-            payment = Payment.objects.get(id=payment_result["payment_id"])
-            if group:
-                payment.notes = f"{payment.notes}\nrequested_group_id={group.id}".strip()
-                payment.save(update_fields=["notes", "updated_at"])
-            if group and subscription.status == "active":
-                StudentGroups.objects.get_or_create(student=student, group=group)
+        from sales.services import OrderService
+        order, subscription = OrderService.create_subscription_order_new(
+            student=student,
+            parent=parent,
+            tariff=tariff,
+            group=group if tariff.subscription_type == Tariff.SUBSCRIPTION_TYPE_GROUP else None,
+            created_by=request.user,
+            comment='Оформление тарифа из CRM',
+        )
+        SubscriptionLog.log(subscription, 'created', comment='Оформление тарифа из CRM', created_by=request.user)
+        payment_result = PaymentService.create_payment_for_order(order.id, parent.id, payment_method=payment_method)
+        payment = Payment.objects.get(id=payment_result["payment_id"])
     except Exception as exc:
         return render(request, "crm/partials/student_buy_tariff_modal.html", build_buy_tariff_context(request, student, data=request.POST, error=str(exc)), status=400)
 

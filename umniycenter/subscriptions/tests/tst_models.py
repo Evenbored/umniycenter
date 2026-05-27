@@ -7,7 +7,8 @@ from django.test import TestCase
 from django.core.exceptions import ValidationError
 from datetime import datetime, timedelta, date
 from decimal import Decimal
-from subscriptions.models import Tariff, Subscription, Payment, LessonAttendance
+from schedule.models import LessonParticipant as LessonAttendance
+from subscriptions.models import Tariff, Subscription, Payment
 from tests.utils import (
     TariffFactory, SubscriptionFactory, PaymentFactory,
     StudentFactory, ParentFactory, CourseFactory,

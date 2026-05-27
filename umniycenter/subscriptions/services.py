@@ -3,6 +3,76 @@ from django.db.models import F
 from django.utils import timezone
 
 from .models import Subscription, Tariff, SubscriptionLog
+from schedule.models import Lesson
+
+
+class SubscriptionUsageService:
+    @staticmethod
+    def find_subscription_for_lesson(student, lesson):
+        course = lesson.course
+        lesson_is_group = lesson.lesson_type in Lesson.GROUP_TYPES
+        preferred_type = Tariff.SUBSCRIPTION_TYPE_GROUP if lesson_is_group else Tariff.SUBSCRIPTION_TYPE_INDIVIDUAL
+        qs = Subscription.objects.select_related('tariff', 'tariff__course').filter(
+            student=student,
+            status='active',
+            tariff__course=course,
+            end_date__gte=timezone.now().date(),
+        ).order_by('end_date', 'id')
+        preferred = qs.filter(tariff__subscription_type=preferred_type).first()
+        if preferred:
+            return preferred, 1
+        if not lesson_is_group:
+            fallback = qs.filter(tariff__subscription_type=Tariff.SUBSCRIPTION_TYPE_GROUP, allow_group_to_individual=True).first()
+            if fallback:
+                return fallback, fallback.group_to_individual_ratio
+        return None, 0
+
+    @staticmethod
+    @transaction.atomic
+    def charge_participant(participant, lessons_count=None, charged_by=None):
+        if participant.lessons_charged:
+            return participant
+        subscription = participant.subscription
+        if subscription is None:
+            subscription, suggested_count = SubscriptionUsageService.find_subscription_for_lesson(participant.student, participant.lesson)
+            if subscription is None:
+                raise ValueError('У ученика нет активного абонемента для этого занятия')
+            participant.subscription = subscription
+            lessons_count = lessons_count or suggested_count
+        lessons_count = int(lessons_count or participant.lessons_to_charge or 1)
+        subscription = Subscription.objects.select_for_update().get(id=subscription.id)
+        if not subscription.can_deduct_lessons(lessons_count):
+            raise ValueError(f'Недостаточно занятий. Осталось: {subscription.lessons_remaining}, требуется: {lessons_count}')
+        subscription.lessons_used += lessons_count
+        if subscription.lessons_remaining == 0 and not subscription.allow_negative_lessons:
+            subscription.status = 'exhausted'
+        subscription.save()
+        participant.subscription = subscription
+        participant.lessons_to_charge = lessons_count
+        participant.lessons_charged = True
+        participant.charged_at = timezone.now()
+        participant.charged_by = charged_by
+        participant.save(update_fields=['subscription', 'lessons_to_charge', 'lessons_charged', 'charged_at', 'charged_by', 'updated_at'])
+        SubscriptionLog.log(subscription, 'deduct', lessons_delta=-lessons_count, related_new_lesson=participant.lesson, created_by=charged_by)
+        return participant
+
+    @staticmethod
+    @transaction.atomic
+    def refund_participant_charge(participant, refunded_by=None):
+        if not participant.lessons_charged or not participant.subscription_id:
+            return participant
+        lessons_count = participant.lessons_to_charge or 1
+        subscription = Subscription.objects.select_for_update().get(id=participant.subscription_id)
+        subscription.lessons_used = max(subscription.lessons_used - lessons_count, 0)
+        if subscription.status == 'exhausted' and subscription.lessons_remaining > 0:
+            subscription.status = 'active'
+        subscription.save()
+        participant.lessons_charged = False
+        participant.charged_at = None
+        participant.charged_by = None
+        participant.save(update_fields=['lessons_charged', 'charged_at', 'charged_by', 'updated_at'])
+        SubscriptionLog.log(subscription, 'refund', lessons_delta=lessons_count, related_new_lesson=participant.lesson, created_by=refunded_by)
+        return participant
 
 
 class SubscriptionService:

@@ -14,7 +14,7 @@ from rest_framework.permissions import IsAuthenticated
 from accounts.models import CustomUser, UserRole, TeacherProfile
 from accounts.permissions import IsAdminRole, IsAdminTeacherOrStudentRole
 from groups.models import SchoolGroups
-from schedule.models import Schedule
+from schedule.models import Lesson, Schedule
 
 from .serializers import CurrentUserSerializer, ParentListSerializer, ParentUpdateSerializer, UserListSerializer
 
@@ -124,16 +124,16 @@ def teacher_detail(request, teacher_id):
 
         # Получаем ближайшие занятия
         today = timezone.now()
-        schedule = Schedule.objects.filter(
+        schedule = Lesson.objects.filter(
             teacher=teacher,
-            classdateStart__gte=today
-        ).select_related('group', 'group__course').order_by('classdateStart')[:10]
+            starts_at__gte=today
+        ).select_related('group', 'group__course', 'course').order_by('starts_at')[:10]
 
         schedule_data = [
             {
                 'id': lesson.id,
-                'group': str(lesson.group),
-                'course': lesson.group.course.name,
+                'group': str(lesson.group) if lesson.group else '',
+                'course': lesson.course.name if lesson.course else '',
                 'date': lesson.classdateStart.strftime('%d.%m.%Y'),
                 'start_time': lesson.classdateStart.strftime('%H:%M'),
                 'end_time': lesson.classdateEnd.strftime('%H:%M'),

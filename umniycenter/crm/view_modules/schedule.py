@@ -14,7 +14,7 @@ def schedule_view(request):
 
 
 def get_schedule_queryset(request):
-    lessons = Schedule.objects.select_related("group", "group__course", "teacher", "student", "course").order_by("classdateStart")
+    lessons = Lesson.objects.select_related("group", "group__course", "teacher", "course").prefetch_related("participants", "participants__student", "order_items", "order_items__order").order_by("starts_at")
     today = timezone.localdate()
     date_from = request.GET.get("date_from") or today.isoformat()
     date_to = request.GET.get("date_to") or (today + timedelta(days=30)).isoformat()
@@ -22,17 +22,19 @@ def get_schedule_queryset(request):
     status_filter = request.GET.get("status")
 
     if date_from:
-        lessons = lessons.filter(classdateStart__date__gte=date_from)
+        lessons = lessons.filter(starts_at__date__gte=date_from)
     if date_to:
-        lessons = lessons.filter(classdateStart__date__lte=date_to)
+        lessons = lessons.filter(starts_at__date__lte=date_to)
     if group_id:
         lessons = lessons.filter(group_id=group_id)
     if status_filter:
         if status_filter in ["cancelled", "rescheduled"]:
             lessons = lessons.filter(status=status_filter)
         else:
-            matching_ids = [lesson.id for lesson in lessons if lesson.actual_status == status_filter]
-            lessons = lessons.filter(id__in=matching_ids)
+            if status_filter == "completed":
+                lessons = lessons.filter(ends_at__lt=timezone.now()).exclude(status="cancelled")
+            elif status_filter == "scheduled":
+                lessons = lessons.filter(ends_at__gte=timezone.now(), status="scheduled")
 
     return list(lessons)
 
@@ -59,6 +61,7 @@ def get_schedule_context(request, selected_lesson=None, error=None):
         "schedule_templates": GroupScheduleTemplate.objects.select_related("group", "group__course", "group__teacher").order_by("group__course__name", "group__number", "weekday", "start_time"),
         "groups": SchoolGroups.objects.select_related("course", "teacher").filter(is_active=True).order_by("course__name", "number"),
         "selected_lesson": selected_lesson,
+        "selected_lesson_orders": selected_lesson.order_items.select_related("order").all() if selected_lesson else [],
         "form_error": error,
         "generate_form": {
             "date_from": request.POST.get("date_from") or request.GET.get("date_from") or "",
@@ -88,12 +91,12 @@ def get_create_lesson_context(request, error=None):
     context = get_schedule_context(request)
     course_id = request.GET.get("course") or request.POST.get("course") or ""
     group_id = request.GET.get("group") or request.POST.get("group") or ""
-    lesson_type = request.GET.get("lesson_type") or request.POST.get("lesson_type") or Schedule.LESSON_TYPE_REGULAR
+    lesson_type = request.GET.get("lesson_type") or request.POST.get("lesson_type") or (Lesson.LessonType.GROUP if group_id else Lesson.LessonType.INDIVIDUAL)
     subscription_type = "group" if group_id else "individual"
     students = CustomUser.objects.filter(role=UserRole.STUDENT, is_active=True)
     if group_id:
         students = students.filter(studentgroups__group_id=group_id)
-    if course_id:
+    if course_id and lesson_type not in [Lesson.LessonType.SINGLE_GROUP, Lesson.LessonType.SINGLE_INDIVIDUAL, Schedule.LESSON_TYPE_SINGLE]:
         students = students.filter(
             subscriptions__status="active",
             subscriptions__tariff__course_id=course_id,
@@ -105,43 +108,30 @@ def get_create_lesson_context(request, error=None):
         "selected_course_id": str(course_id),
         "selected_group_id": str(group_id),
         "selected_lesson_type": lesson_type,
+        "single_lesson_amount": request.POST.get("single_lesson_amount") or request.GET.get("single_lesson_amount") or "",
+        "single_lesson_payment_method": request.POST.get("single_lesson_payment_method") or request.GET.get("single_lesson_payment_method") or "cash",
+        "single_lesson_paid": request.POST.get("single_lesson_paid") != "off",
         "create_students": students.distinct().order_by("last_name", "first_name", "id"),
         "create_groups": context["groups"].filter(course_id=course_id) if course_id else SchoolGroups.objects.none(),
         "teachers": CustomUser.objects.filter(role=UserRole.TEACHER, is_active=True).order_by("last_name", "first_name", "id"),
         "courses": Courses.objects.all().order_by("name"),
+        "payment_method_choices": Payment.PAYMENT_METHOD_CHOICES,
     })
     return context
 
 
 def get_lesson_attendance_context(request, lesson, error=None, success=None):
-    try:
-        from subscriptions.models import LessonAttendance
-    except Exception:
-        LessonAttendance = None
-
-    if lesson.group:
-        explicit_students = list(lesson.students.all().order_by("last_name", "first_name"))
-        if explicit_students:
-            students = explicit_students
-        else:
-            students = [membership.student for membership in StudentGroups.objects.select_related("student").filter(group=lesson.group).order_by("student__last_name", "student__first_name")]
-    elif lesson.student:
-        students = [lesson.student]
-    else:
-        students = []
-
-    attendance_by_student = {}
-    if LessonAttendance:
-        attendance_by_student = {item.student_id: item for item in LessonAttendance.objects.filter(schedule=lesson)}
-
-    attendance_rows = [{"student": student, "attendance": attendance_by_student.get(student.id)} for student in students]
+    participants = list(lesson.participants.select_related("student", "subscription").order_by("student__last_name", "student__first_name"))
+    students = [participant.student for participant in participants]
+    participant_by_student = {participant.student_id: participant for participant in participants}
+    attendance_rows = [{"student": participant.student, "attendance": participant, "participant": participant} for participant in participants]
 
     return {
         "selected_lesson": prepare_schedule_lesson(lesson),
         "attendance_students": students,
         "attendance_rows": attendance_rows,
-        "attendance_by_student": attendance_by_student,
-        "attendance_status_choices": LessonAttendance.ATTENDANCE_STATUS if LessonAttendance else [],
+        "attendance_by_student": participant_by_student,
+        "attendance_status_choices": LessonParticipant.AttendanceStatus.choices,
         "form_error": error,
         "form_success": success,
     }
@@ -155,9 +145,9 @@ def get_schedule_today_context(request, selected_lesson=None, selected_student=N
     today = timezone.localdate()
     lessons = [
         prepare_schedule_lesson(lesson)
-        for lesson in Schedule.objects.select_related("group", "group__course", "teacher", "student", "course")
-        .filter(classdateStart__date=today)
-        .order_by("classdateStart")
+        for lesson in Lesson.objects.select_related("group", "group__course", "teacher", "course").prefetch_related("participants")
+        .filter(starts_at__date=today)
+        .order_by("starts_at")
     ]
     if selected_lesson is None and lessons:
         selected_lesson = lessons[0]
@@ -181,12 +171,12 @@ def schedule_today_lessons_partial(request):
 
 
 def schedule_today_attendance_partial(request, lesson_id):
-    lesson = get_object_or_404(Schedule.objects.select_related("group", "group__course", "teacher", "student", "course"), id=lesson_id)
+    lesson = get_object_or_404(Lesson.objects.select_related("group", "group__course", "teacher", "course"), id=lesson_id)
     return render(request, "crm/partials/schedule_today_attendance.html", get_schedule_today_context(request, selected_lesson=lesson))
 
 
 def schedule_today_student_partial(request, lesson_id, student_id):
-    lesson = get_object_or_404(Schedule.objects.select_related("group", "group__course", "teacher", "student", "course"), id=lesson_id)
+    lesson = get_object_or_404(Lesson.objects.select_related("group", "group__course", "teacher", "course"), id=lesson_id)
     student = get_object_or_404(CustomUser, id=student_id, role=UserRole.STUDENT)
     return render(request, "crm/partials/schedule_today_student.html", get_schedule_today_context(request, selected_lesson=lesson, selected_student=student))
 
@@ -198,17 +188,16 @@ def schedule_lessons_partial(request):
 
 
 def schedule_lesson_drawer_partial(request, lesson_id):
-    lesson = get_object_or_404(Schedule.objects.select_related("group", "group__course", "teacher", "student", "course"), id=lesson_id)
+    lesson = get_object_or_404(Lesson.objects.select_related("group", "group__course", "teacher", "course"), id=lesson_id)
     context = {**get_schedule_context(request, selected_lesson=lesson), **get_lesson_attendance_context(request, lesson)}
     return render(request, "crm/partials/schedule_lesson_drawer.html", context)
 
 
 def schedule_lesson_cancel_partial(request, lesson_id):
-    lesson = get_object_or_404(Schedule, id=lesson_id)
-    lesson.status = "cancelled"
-    lesson.cancel_reason = (request.POST.get("reason") or "").strip()
-    lesson.save(update_fields=["status", "cancel_reason"])
-    lesson = Schedule.objects.select_related("group", "group__course", "teacher", "student", "course").get(id=lesson.id)
+    from schedule.services import LessonService
+    lesson = get_object_or_404(Lesson, id=lesson_id)
+    LessonService.cancel_lesson(lesson, (request.POST.get("reason") or "").strip(), request.user)
+    lesson = Lesson.objects.select_related("group", "group__course", "teacher", "course").get(id=lesson.id)
     response = HttpResponse(
         render_to_string("crm/partials/schedule_lesson_drawer.html", {**get_schedule_context(request, selected_lesson=lesson), **get_lesson_attendance_context(request, lesson)}, request=request)
         + render_to_string("crm/partials/schedule_lessons.html", {**get_schedule_context(request), "lessons_oob": True}, request=request)
@@ -218,7 +207,8 @@ def schedule_lesson_cancel_partial(request, lesson_id):
 
 
 def schedule_lesson_reschedule_partial(request, lesson_id):
-    lesson = get_object_or_404(Schedule, id=lesson_id)
+    from schedule.services import LessonService
+    lesson = get_object_or_404(Lesson, id=lesson_id)
     try:
         new_start_raw = request.POST.get("classdateStart") or ""
         new_start = datetime.fromisoformat(new_start_raw)
@@ -226,26 +216,26 @@ def schedule_lesson_reschedule_partial(request, lesson_id):
             new_start = timezone.make_aware(new_start)
         lessons_count = int(request.POST.get("lessons_count") or 2)
         lesson_type = request.POST.get("lesson_type") or lesson.lesson_type
+        if lesson_type == Schedule.LESSON_TYPE_REGULAR:
+            lesson_type = Lesson.LessonType.GROUP if lesson.group_id else Lesson.LessonType.INDIVIDUAL
+        elif lesson_type == Schedule.LESSON_TYPE_SINGLE:
+            lesson_type = Lesson.LessonType.SINGLE_GROUP if lesson.group_id else Lesson.LessonType.SINGLE_INDIVIDUAL
         if lessons_count not in (1, 2):
             raise ValueError("Занятие может длиться только 1 или 2 академических часа")
-        if lesson_type not in dict(Schedule.LESSON_TYPE_CHOICES):
+        if lesson_type not in dict(Lesson.LessonType.choices):
             raise ValueError("Выберите корректный тип занятия")
-        if not lesson.original_classdateStart:
-            lesson.original_classdateStart = lesson.classdateStart
-            lesson.original_classdateEnd = lesson.classdateEnd
         from schedule.services import get_lesson_end_time
-        lesson.classdateStart = new_start
-        lesson.classdateEnd = get_lesson_end_time(new_start.time(), lessons_count)
+        from datetime import datetime as dt
+        end_time = get_lesson_end_time(new_start.time(), lessons_count)
+        new_end = timezone.make_aware(dt.combine(new_start.date(), end_time))
         lesson.lesson_type = lesson_type
-        lesson.is_single = lesson_type == Schedule.LESSON_TYPE_SINGLE
-        lesson.status = "rescheduled"
-        lesson.reschedule_reason = (request.POST.get("reason") or "").strip()
-        lesson.save()
+        lesson.save(update_fields=["lesson_type", "updated_at"])
+        LessonService.reschedule_lesson(lesson, new_start, new_end, (request.POST.get("reason") or "").strip(), request.user)
     except Exception as exc:
-        lesson = Schedule.objects.select_related("group", "group__course", "teacher", "student", "course").get(id=lesson.id)
+        lesson = Lesson.objects.select_related("group", "group__course", "teacher", "course").get(id=lesson.id)
         return render(request, "crm/partials/schedule_lesson_drawer.html", {**get_schedule_context(request, selected_lesson=lesson, error=str(exc)), **get_lesson_attendance_context(request, lesson)}, status=400)
 
-    lesson = Schedule.objects.select_related("group", "group__course", "teacher", "student", "course").get(id=lesson.id)
+    lesson = Lesson.objects.select_related("group", "group__course", "teacher", "course").get(id=lesson.id)
     response = HttpResponse(
         render_to_string("crm/partials/schedule_lesson_drawer.html", {**get_schedule_context(request, selected_lesson=lesson), **get_lesson_attendance_context(request, lesson)}, request=request)
         + render_to_string("crm/partials/schedule_lessons.html", {**get_schedule_context(request), "lessons_oob": True}, request=request)
@@ -328,7 +318,7 @@ def schedule_create_lesson_drawer_partial(request):
 
 
 def schedule_lesson_create_partial(request):
-    from schedule.services import get_lesson_end_time
+    from schedule.services import LessonService, get_lesson_end_time
     try:
         classdate_start = datetime.fromisoformat(request.POST.get("classdateStart") or "")
         if timezone.is_naive(classdate_start):
@@ -341,28 +331,46 @@ def schedule_lesson_create_partial(request):
         student_id = request.POST.get("student")
         if not group_id and not student_id:
             raise ValueError("Выберите группу или ученика")
-        lesson = Schedule.objects.create(
+        group = get_object_or_404(SchoolGroups, id=group_id) if group_id else None
+        selected_students = list(CustomUser.objects.filter(id__in=request.POST.getlist("students"), role=UserRole.STUDENT)) if group else []
+        if not group:
+            selected_students = [get_object_or_404(CustomUser, id=student_id, role=UserRole.STUDENT)]
+        if lesson_type == Schedule.LESSON_TYPE_REGULAR:
+            lesson_type = Lesson.LessonType.GROUP if group else Lesson.LessonType.INDIVIDUAL
+        elif lesson_type == Schedule.LESSON_TYPE_SINGLE:
+            lesson_type = Lesson.LessonType.SINGLE_GROUP if group else Lesson.LessonType.SINGLE_INDIVIDUAL
+        end_time = get_lesson_end_time(classdate_start.time(), lessons_count)
+        classdate_end = timezone.make_aware(datetime.combine(classdate_start.date(), end_time))
+        lesson = LessonService.create_lesson(
             lesson_type=lesson_type,
-            classdateStart=classdate_start,
-            classdateEnd=get_lesson_end_time(classdate_start.time(), lessons_count),
+            starts_at=classdate_start,
+            ends_at=classdate_end,
             teacher=teacher,
-            course=course,
-            status="scheduled",
-            is_single=lesson_type == Schedule.LESSON_TYPE_SINGLE,
+            course=group.course if group else course,
+            group=group,
+            participants=selected_students,
+            created_by=request.user,
         )
-        if group_id:
-            lesson.group = get_object_or_404(SchoolGroups, id=group_id)
-            lesson.course = lesson.group.course
-            selected_student_ids = request.POST.getlist("students")
-            lesson.save()
-            if selected_student_ids:
-                allowed_students = CustomUser.objects.filter(id__in=selected_student_ids, role=UserRole.STUDENT)
-                lesson.students.set(allowed_students)
-        else:
-            lesson.student = get_object_or_404(CustomUser, id=student_id, role=UserRole.STUDENT)
-            lesson.save()
-        lesson.full_clean()
-        lesson.save()
+        if lesson.is_single:
+            from sales.services import OrderService
+            amount = request.POST.get("single_lesson_amount") or ""
+            paid = request.POST.get("single_lesson_paid") in ["on", "true", "1"]
+            payment_method = request.POST.get("single_lesson_payment_method") or "cash"
+            order_student = None if lesson.group_id else selected_students[0]
+            if not amount:
+                raise ValueError("Укажите стоимость разового занятия")
+            order = OrderService.create_single_lesson_order(
+                lesson=lesson,
+                student=order_student,
+                amount=amount,
+                payment_method=payment_method,
+                paid=paid,
+                created_by=request.user,
+                comment="Продажа разового занятия из CRM",
+            )
+            item = order.items.first()
+            if item:
+                lesson.participants.update(order_item=item)
     except Exception as exc:
         return render(request, "crm/partials/schedule_create_lesson_drawer.html", get_create_lesson_context(request, error=str(exc)), status=400)
 
@@ -375,21 +383,18 @@ def schedule_lesson_create_partial(request):
 
 
 def schedule_attendance_mark_partial(request, lesson_id, student_id):
-    from subscriptions.models import LessonAttendance
-    from subscriptions.services import SubscriptionService
-    lesson = get_object_or_404(Schedule.objects.select_related("group", "group__course", "student", "course"), id=lesson_id)
+    from schedule.services import LessonService
+    lesson = get_object_or_404(Lesson.objects.select_related("group", "group__course", "course"), id=lesson_id)
     student = get_object_or_404(CustomUser, id=student_id, role=UserRole.STUDENT)
     try:
         status_value = request.POST.get("status")
         lessons_count = int(request.POST.get("lessons_count") or 2)
-        if LessonAttendance.objects.filter(schedule=lesson, student=student).exists():
+        if status_value == "absent":
+            status_value = LessonParticipant.AttendanceStatus.ABSENT_NOT_CHARGED
+        participant, _ = LessonParticipant.objects.get_or_create(lesson=lesson, student=student)
+        if participant.attendance_status != LessonParticipant.AttendanceStatus.PLANNED:
             raise ValueError("Посещение уже отмечено для этого ученика")
-        subscription = None
-        lesson_deducted = False
-        if status_value == "present" and not lesson.is_single:
-            subscription, lessons_count = SubscriptionService.deduct_for_lesson(student, lesson, lessons_count, marked_by=request.user)
-            lesson_deducted = True
-        LessonAttendance.objects.create(schedule=lesson, student=student, status=status_value, lessons_count=lessons_count, subscription=subscription, lesson_deducted=lesson_deducted, marked_by=request.user)
+        LessonService.mark_participant_attendance(participant, status_value, lessons_count, request.user)
         student.update_active_status()
     except Exception as exc:
         return render(request, "crm/partials/schedule_attendance.html", get_lesson_attendance_context(request, lesson, error=str(exc)), status=400)
@@ -397,14 +402,11 @@ def schedule_attendance_mark_partial(request, lesson_id, student_id):
 
 
 def schedule_attendance_cancel_partial(request, attendance_id):
-    from subscriptions.models import LessonAttendance
-    from subscriptions.services import SubscriptionService
-    attendance = get_object_or_404(LessonAttendance.objects.select_related("schedule", "subscription", "student"), id=attendance_id)
-    lesson = attendance.schedule
+    from schedule.services import LessonService
+    attendance = get_object_or_404(LessonParticipant.objects.select_related("lesson", "subscription", "student"), id=attendance_id)
+    lesson = attendance.lesson
     student = attendance.student
-    if attendance.lesson_deducted and attendance.subscription:
-        SubscriptionService.refund_for_attendance(attendance, created_by=request.user)
-    attendance.delete()
+    LessonService.cancel_participant_attendance(attendance, request.user)
     student.update_active_status()
     return render(request, "crm/partials/schedule_attendance.html", get_lesson_attendance_context(request, lesson, success="Отметка отменена"))
 

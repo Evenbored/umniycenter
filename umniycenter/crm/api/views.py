@@ -10,12 +10,13 @@ from rest_framework.decorators import api_view
 from accounts.models import CustomUser, UserRole
 from accounts.permissions import IsAdminRole, IsSuperUser
 from groups.models import SchoolGroups
-from schedule.models import Schedule
+from schedule.models import Lesson, LessonParticipant, Schedule
 from main.models import ParticipantRequest
 from students.models import StudentGroups
-from subscriptions.models import Payment, Subscription, LessonAttendance
+from subscriptions.models import Payment, Subscription
 from communication.models import Message
 from subscriptions.api.serializers import LessonAttendanceSerializer, PaymentSerializer, SubscriptionSerializer
+from sales.models import Order, OrderItem, OrderItemType, OrderStatus
 
 
 def parse_dashboard_date(date_str=None):
@@ -91,7 +92,20 @@ def get_dashboard_payment_dates(month_date):
         .values_list("created_at__date", flat=True)
         .distinct()
     )
-    return paid_dates | created_dates_without_paid_at
+    order_dates = set(
+        Order.objects.filter(
+            status=OrderStatus.PAID,
+            paid_at__date__gte=first_day,
+            paid_at__date__lt=next_month,
+        )
+        .values_list("paid_at__date", flat=True)
+        .distinct()
+    )
+    return paid_dates | created_dates_without_paid_at | order_dates
+
+
+def get_paid_orders_for_dashboard_date(selected_date):
+    return Order.objects.filter(status=OrderStatus.PAID, paid_at__date=selected_date)
 
 
 def build_dashboard_calendar(selected_date, payment_dates=None):
@@ -161,6 +175,8 @@ def build_dashboard_payload(selected_date=None):
     groups_count = SchoolGroups.objects.filter(is_active=True).count()
     new_requests_count = ParticipantRequest.objects.filter(checked=False).count()
     payments_count = Payment.objects.count()
+    completed_payments_count = Payment.objects.filter(status="completed").count()
+    pending_payments_count = Payment.objects.filter(status="pending").count()
     unread_messages_count = Message.objects.filter(sender__role=UserRole.PARENT, is_read=False).count()
 
     payments_on_date = (
@@ -172,6 +188,17 @@ def build_dashboard_payload(selected_date=None):
             "subscription__student",
         )
     )
+    orders_on_date = get_paid_orders_for_dashboard_date(selected_date)
+    subscription_order_payment_ids = set(
+        OrderItem.objects.filter(
+            order__in=orders_on_date,
+            item_type=OrderItemType.SUBSCRIPTION,
+            order__payment_id__isnull=False,
+        ).values_list("order__payment_id", flat=True)
+    )
+    order_items_on_date = OrderItem.objects.filter(order__in=orders_on_date).select_related(
+        "order", "subscription", "subscription__tariff", "schedule", "course"
+    )
 
     subscriptions_group = 0
     subscriptions_individual = 0
@@ -180,18 +207,27 @@ def build_dashboard_payload(selected_date=None):
 
     def is_group_payment(payment):
         subscription = payment.subscription
+        if not subscription and payment.order_id:
+            item = payment.order.items.filter(subscription__isnull=False).select_related('subscription', 'subscription__tariff').first()
+            subscription = item.subscription if item else None
+        if not subscription:
+            return False
         tariff = subscription.tariff
         if getattr(tariff, "subscription_type", None) == "group":
             return True
+        if getattr(tariff, "subscription_type", None) == "individual":
+            return False
         if subscription.group_id:
             return True
-        return StudentGroups.objects.filter(
-            student=subscription.student,
-            group__course=tariff.course,
-        ).exists()
+        return False
 
     def is_renewal_payment(payment):
         subscription = payment.subscription
+        if not subscription and payment.order_id:
+            item = payment.order.items.filter(subscription__isnull=False).select_related('subscription', 'subscription__tariff').first()
+            subscription = item.subscription if item else None
+        if not subscription:
+            return False
         paid_at = payment.paid_at or payment.updated_at or payment.created_at
         if not paid_at:
             return False
@@ -202,7 +238,18 @@ def build_dashboard_payload(selected_date=None):
             created_at__lt=paid_at,
         ).exclude(id=subscription.id).exists()
 
+    def is_renewal_subscription(subscription, paid_at):
+        if not subscription or not paid_at:
+            return False
+        return Subscription.objects.filter(
+            student=subscription.student,
+            tariff__course=subscription.tariff.course,
+            created_at__lt=paid_at,
+        ).exclude(id=subscription.id).exists()
+
     for payment in payments_on_date:
+        if payment.id in subscription_order_payment_ids:
+            continue
         if is_group_payment(payment):
             subscriptions_group += 1
         else:
@@ -213,16 +260,16 @@ def build_dashboard_payload(selected_date=None):
         else:
             subscriptions_new += 1
 
-    attendances_on_date = (
-        LessonAttendance.objects.filter(schedule__classdateStart__date=selected_date, status="present")
-        .select_related("schedule", "schedule__group", "student")
-    )
+    single_lessons_group = 0
+    single_lessons_individual = 0
+
+    attendances_on_date = LessonParticipant.objects.filter(lesson__starts_at__date=selected_date, attendance_status="present").select_related("lesson", "lesson__group", "student")
 
     attendance_group = 0
     attendance_individual = 0
 
     for attendance in attendances_on_date:
-        if attendance.schedule.group_id:
+        if attendance.lesson.group_id:
             attendance_group += 1
         else:
             attendance_individual += 1
@@ -239,10 +286,42 @@ def build_dashboard_payload(selected_date=None):
     }
 
     for payment in payments_on_date:
+        if payment.id in subscription_order_payment_ids:
+            continue
         if is_group_payment(payment):
             income_breakdown["groupSubscriptions"] += Decimal(payment.amount)
         else:
             income_breakdown["individualSubscriptions"] += Decimal(payment.amount)
+
+    products_total = 0
+    for item in order_items_on_date:
+        amount = Decimal(item.amount or 0) * Decimal(item.quantity or 1)
+        quantity = item.quantity or 1
+        if item.item_type == OrderItemType.SUBSCRIPTION:
+            subscription = item.subscription
+            if subscription and getattr(subscription.tariff, "subscription_type", None) == "individual":
+                subscriptions_individual += quantity
+                income_breakdown["individualSubscriptions"] += amount
+            else:
+                subscriptions_group += quantity
+                income_breakdown["groupSubscriptions"] += amount
+            if is_renewal_subscription(subscription, item.order.paid_at or item.order.created_at):
+                subscriptions_renewal += quantity
+            else:
+                subscriptions_new += quantity
+        elif item.item_type == OrderItemType.SINGLE_GROUP:
+            single_lessons_group += quantity
+            income_breakdown["groupSingle"] += amount
+        elif item.item_type == OrderItemType.SINGLE_INDIVIDUAL:
+            single_lessons_individual += quantity
+            income_breakdown["individualSingle"] += amount
+        elif item.item_type == OrderItemType.PRODUCT:
+            products_total += quantity
+            income_breakdown["products"] += amount
+        elif item.item_type == OrderItemType.RENT:
+            income_breakdown["rentSingle"] += amount
+        elif item.item_type == OrderItemType.ACCOUNT_TOPUP:
+            income_breakdown["accountTopup"] += amount
 
     total_income = sum(income_breakdown.values())
     max_income = max(income_breakdown.values()) if any(income_breakdown.values()) else Decimal("0")
@@ -262,42 +341,45 @@ def build_dashboard_payload(selected_date=None):
     total_balance = total_income - total_expense
 
     group_attendances = []
-    groups_with_lessons = (
-        Schedule.objects.filter(classdateStart__date=selected_date, group__isnull=False)
-        .select_related("group", "group__course")
-        .distinct()
+    group_attendance_rows = (
+        LessonParticipant.objects.filter(lesson__starts_at__date=selected_date, lesson__group__isnull=False)
+        .values("lesson__group_id", "lesson__group__course__name", "lesson__group__number")
+        .annotate(
+            total=Count("id"),
+            present=Count("id", filter=Q(attendance_status="present")),
+            absent=Count("id", filter=Q(attendance_status__in=["absent_charged", "absent_not_charged"])),
+            excused=Count("id", filter=Q(attendance_status="excused")),
+        )
+        .order_by("lesson__group__course__name", "lesson__group__number")
     )
 
-    for schedule in groups_with_lessons:
-        if schedule.group:
-            attendances = LessonAttendance.objects.filter(schedule=schedule)
-            present_count = attendances.filter(status="present").count()
-            absent_count = attendances.filter(status="absent").count()
-            total_count = attendances.count()
-
-            if total_count > 0:
-                group_attendances.append(
-                    {
-                        "group_name": f"{schedule.group.course.name} - {schedule.group.number}",
-                        "total": total_count,
-                        "present": present_count,
-                        "absent": absent_count,
-                    }
-                )
+    for row in group_attendance_rows:
+        group_attendances.append(
+            {
+                "group_id": row["lesson__group_id"],
+                "group_name": f"{row['lesson__group__course__name']} - {row['lesson__group__number']}",
+                "total": row["total"],
+                "present": row["present"],
+                "absent": row["absent"],
+                "excused": row["excused"],
+            }
+        )
 
     individual_attendances = []
-    individual_lessons = (
-        LessonAttendance.objects.filter(schedule__classdateStart__date=selected_date, schedule__group__isnull=True)
-        .select_related("student", "schedule")
-    )
+    individual_lessons = LessonParticipant.objects.filter(lesson__starts_at__date=selected_date, lesson__group__isnull=True).select_related("student", "lesson")
 
     for attendance in individual_lessons:
+        status_display = attendance.get_attendance_status_display()
         individual_attendances.append(
             {
+                "id": attendance.id,
                 "student_name": attendance.student.get_full_name() or attendance.student.username,
-                "status": attendance.status,
-                "present": 1 if attendance.status == "present" else 0,
-                "absent": 1 if attendance.status == "absent" else 0,
+                "status": attendance.attendance_status,
+                "status_display": status_display,
+                "total": 1,
+                "present": 1 if attendance.attendance_status == "present" else 0,
+                "absent": 1 if attendance.attendance_status in ["absent_charged", "absent_not_charged"] else 0,
+                "excused": 1 if attendance.attendance_status == "excused" else 0,
             }
         )
 
@@ -312,6 +394,8 @@ def build_dashboard_payload(selected_date=None):
             "groups_count": groups_count,
             "new_requests_count": new_requests_count,
             "payments_count": payments_count,
+            "completed_payments_count": completed_payments_count,
+            "pending_payments_count": pending_payments_count,
             "unread_messages_count": unread_messages_count,
         },
         "subscriptions": {
@@ -322,12 +406,12 @@ def build_dashboard_payload(selected_date=None):
             "total": subscriptions_group + subscriptions_individual,
         },
         "singleLessons": {
-            "group": 0,
-            "individual": 0,
-            "total": 0,
+            "group": single_lessons_group,
+            "individual": single_lessons_individual,
+            "total": single_lessons_group + single_lessons_individual,
         },
         "products": {
-            "total": 0,
+            "total": products_total,
         },
         "attendance": {
             "group": attendance_group,
@@ -421,6 +505,7 @@ def build_dashboard_payload(selected_date=None):
             "formatted_total": format_dashboard_currency(total_balance),
             "formatted_income_total": format_dashboard_currency(total_income),
             "formatted_expense_total": format_dashboard_currency(total_expense),
+            "payments_count": payments_on_date.exclude(id__in=subscription_order_payment_ids).count() + orders_on_date.count(),
         },
         "groupAttendances": group_attendances,
         "individualAttendances": individual_attendances,
@@ -452,10 +537,10 @@ def student_account_history(request, student_id):
             return Response({"error": "Доступ запрещен"}, status=403)
 
     attendances = (
-        LessonAttendance.objects
+        LessonParticipant.objects
         .filter(student=student)
-        .select_related("schedule", "schedule__group", "schedule__group__course", "subscription", "marked_by")
-        .order_by("-schedule__classdateStart", "-created_at")
+        .select_related("lesson", "lesson__group", "lesson__group__course", "subscription", "marked_by")
+        .order_by("-lesson__starts_at", "-created_at")
     )
     subscriptions = (
         Subscription.objects
@@ -465,8 +550,10 @@ def student_account_history(request, student_id):
     )
     payments = (
         Payment.objects
-        .filter(subscription__student=student)
-        .select_related("subscription", "subscription__student", "subscription__tariff", "subscription__tariff__course", "parent")
+        .filter(Q(subscription__student=student) | Q(order__student=student) | Q(order__items__subscription__student=student))
+        .select_related("order", "order__student", "subscription", "subscription__student", "subscription__tariff", "subscription__tariff__course", "parent")
+        .prefetch_related("order__items", "order__items__subscription", "order__items__tariff")
+        .distinct()
         .order_by("-created_at")
     )
 

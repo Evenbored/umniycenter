@@ -109,11 +109,14 @@ class PaymentsListAPIView(ListAPIView):
     def get_queryset(self):
         queryset = Payment.objects.select_related(
             'parent',
+            'order',
+            'order__parent',
+            'order__student',
             'subscription',
             'subscription__student',
             'subscription__tariff',
             'subscription__tariff__course',
-        )
+        ).prefetch_related('order__items', 'order__items__subscription', 'order__items__tariff')
 
         status_filter = self.request.query_params.get('status')
         method_filter = self.request.query_params.get('method')
@@ -135,6 +138,9 @@ class PaymentsListAPIView(ListAPIView):
                 Q(subscription__student__last_name__icontains=search) |
                 Q(subscription__tariff__name__icontains=search) |
                 Q(subscription__tariff__course__name__icontains=search) |
+                Q(order__student__first_name__icontains=search) |
+                Q(order__student__last_name__icontains=search) |
+                Q(order__items__title__icontains=search) |
                 Q(transaction_id__icontains=search) |
                 Q(yookassa_payment_id__icontains=search)
             )
@@ -212,7 +218,12 @@ def create_subscription(request):
         if payment.status == 'completed' and payment.payment_method in ['cash', 'card', 'transfer']:
             subscription.status = 'active'
             subscription.save()
-            
+            try:
+                from sales.services import OrderService
+                OrderService.create_subscription_order(payment, created_by=request.user)
+            except Exception as exc:
+                logger.warning(f"Could not sync sales order for payment {payment.id}: {str(exc)}")
+             
             # Обновляем статус ученика и родителя
             student.update_active_status()
             parent.update_active_status()
@@ -390,88 +401,27 @@ def mark_attendance(request):
         )
     
     try:
-        from schedule.models import Schedule
-        schedule = Schedule.objects.get(id=schedule_id)
+        from schedule.models import Lesson, LessonParticipant
+        from schedule.services import LessonService
+        schedule = Lesson.objects.get(id=schedule_id)
         student = CustomUser.objects.get(id=student_id, role=UserRole.STUDENT)
-    except Schedule.DoesNotExist:
+    except Lesson.DoesNotExist:
         return Response({"error": "Занятие не найдено"}, status=status.HTTP_404_NOT_FOUND)
     except CustomUser.DoesNotExist:
         return Response({"error": "Ученик не найден"}, status=status.HTTP_404_NOT_FOUND)
 
-    if schedule.student_id and schedule.student_id != student.id:
-        return Response(
-            {"error": "Этот ученик не записан на выбранное индивидуальное/разовое занятие"},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-    active_subscription = None
-    
-    # Проверяем, нет ли уже отметки
-    existing = LessonAttendance.objects.filter(
-        schedule=schedule,
-        student=student
-    ).first()
-    
-    if existing:
-        return Response(
-            {"error": "Посещение уже отмечено для этого ученика"},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-    
-    # Если ученик присутствовал, проверяем наличие достаточного количества занятий ДО создания записи
-    if attendance_status == 'present' and not schedule.is_single:
-        # Ищем активную подписку для этого курса
-        subscription_type = (
-            Tariff.SUBSCRIPTION_TYPE_GROUP
-            if schedule.group_id
-            else Tariff.SUBSCRIPTION_TYPE_INDIVIDUAL
-        )
-        active_subscription = Subscription.objects.filter(
-            student=student,
-            status='active',
-            tariff__course=schedule.group.course if schedule.group else schedule.course,
-            tariff__subscription_type=subscription_type,
-            end_date__gte=timezone.now().date()
-        ).order_by('end_date').first()
-        
-        if not active_subscription:
-            return Response(
-                {"error": "У ученика нет активной подписки на этот курс"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        if active_subscription.lessons_remaining < lessons_count:
-            return Response(
-                {"error": f"Недостаточно занятий. Осталось: {active_subscription.lessons_remaining}, требуется: {lessons_count}"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-    
-    with transaction.atomic():
-        # Создаем отметку посещения
-        attendance = LessonAttendance.objects.create(
-            schedule=schedule,
-            student=student,
-            status=attendance_status,
-            lessons_count=lessons_count,
-            notes=notes,
-            marked_by=request.user
-        )
-        
-        # Если ученик присутствовал, списываем занятия
-        if attendance_status == 'present' and not schedule.is_single:
-            # Списываем занятия (подписка уже проверена выше)
-            active_subscription.deduct_lessons(lessons_count)
-            
-            attendance.subscription = active_subscription
-            attendance.lesson_deducted = True
-            attendance.save()
-            
-            # Обновляем статус ученика
-            student.update_active_status()
+    status_map = {'absent': 'absent_not_charged'}
+    try:
+        participant, _ = LessonParticipant.objects.get_or_create(lesson=schedule, student=student)
+        participant = LessonService.mark_participant_attendance(participant, status_map.get(attendance_status, attendance_status), lessons_count, request.user, notes)
+    except Exception as exc:
+        return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
     
     return Response({
         "message": "Посещение успешно отмечено",
-        "attendance": LessonAttendanceSerializer(attendance).data
+        "participant_id": participant.id,
+        "attendance_status": participant.attendance_status,
+        "lessons_charged": participant.lessons_charged,
     }, status=status.HTTP_201_CREATED)
 
 
@@ -485,20 +435,13 @@ def cancel_attendance(request, attendance_id):
         )
     
     try:
-        attendance = LessonAttendance.objects.get(id=attendance_id)
-    except LessonAttendance.DoesNotExist:
+        from schedule.models import LessonParticipant
+        from schedule.services import LessonService
+        attendance = LessonParticipant.objects.select_related('student', 'subscription', 'lesson').get(id=attendance_id)
+    except LessonParticipant.DoesNotExist:
         return Response({"error": "Отметка не найдена"}, status=status.HTTP_404_NOT_FOUND)
-    
-    with transaction.atomic():
-        # Если занятия были списаны, возвращаем их
-        if attendance.lesson_deducted and attendance.subscription:
-            attendance.subscription.refund_lessons(attendance.lessons_count)
-            
-            # Обновляем статус ученика
-            attendance.student.update_active_status()
-        
-        # Удаляем отметку
-        attendance.delete()
+    LessonService.cancel_participant_attendance(attendance, request.user)
+    attendance.student.update_active_status()
     
     return Response({
         "message": "Отметка посещения отменена, занятия возвращены"
@@ -513,11 +456,12 @@ class StudentAttendanceHistoryAPIView(ListAPIView):
     def get_queryset(self):
         student_id = self.kwargs.get('student_id')
         
-        queryset = LessonAttendance.objects.filter(
+        from schedule.models import LessonParticipant
+        queryset = LessonParticipant.objects.filter(
             student_id=student_id
-        ).select_related('schedule', 'student', 'subscription', 'marked_by')
+        ).select_related('lesson', 'student', 'subscription', 'marked_by')
         
-        return queryset.order_by('-created_at')
+        return queryset.order_by('-lesson__starts_at', '-created_at')
 
 
 # ============================================
@@ -597,7 +541,7 @@ def confirm_payment(request, payment_id):
         return Response({
             "message": "Оплата подтверждена, подписка активирована",
             "payment": PaymentSerializer(payment).data,
-            "subscription": SubscriptionSerializer(payment.subscription).data,
+            "subscription": SubscriptionSerializer(payment.subscription).data if payment.subscription_id else None,
         }, status=status.HTTP_200_OK)
     except ValueError as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -619,7 +563,7 @@ def cancel_payment(request, payment_id):
         return Response({
             "message": "Платеж отменен, неоплаченная подписка закрыта",
             "payment": PaymentSerializer(payment).data,
-            "subscription": SubscriptionSerializer(payment.subscription).data,
+            "subscription": SubscriptionSerializer(payment.subscription).data if payment.subscription_id else None,
         }, status=status.HTTP_200_OK)
     except ValueError as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

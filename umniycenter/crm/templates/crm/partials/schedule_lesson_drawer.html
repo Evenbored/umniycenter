@@ -29,6 +29,23 @@
             <label class="crm-form-field"><span>Причина отмены</span><input name="reason" type="text" value="{{ selected_lesson.cancel_reason }}"></label>
         </form>
         <hr class="crm-divider">
+        {% if selected_lesson.is_single %}
+        <div class="crm-drawer-section">
+            <h4>Продажа разового занятия</h4>
+            {% if selected_lesson_orders %}
+                {% for item in selected_lesson_orders %}
+                    <div class="crm-info-grid" style="margin-top: 8px;">
+                        <div class="crm-info-item"><span class="crm-info-label">Статус</span><strong>{{ item.order.get_status_display }}</strong></div>
+                        <div class="crm-info-item"><span class="crm-info-label">Сумма</span><strong>{{ item.amount|floatformat:0 }} ₽</strong></div>
+                        <div class="crm-info-item"><span class="crm-info-label">Дата оплаты</span><strong>{{ item.order.paid_at|date:'d.m.Y H:i'|default:'-' }}</strong></div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="crm-table-empty">Продажа для этого разового занятия не создана.</div>
+            {% endif %}
+        </div>
+        <hr class="crm-divider">
+        {% endif %}
         <div class="crm-drawer-section"><h4>Посещаемость</h4>{% include 'crm/partials/schedule_attendance.html' %}</div>
     </div>
     <footer class="crm-drawer__footer">

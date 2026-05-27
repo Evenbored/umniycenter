@@ -179,20 +179,49 @@ class PaymentFactory(DjangoModelFactory):
 # ============================================================================
 
 class ScheduleFactory(DjangoModelFactory):
-    """Factory for creating Schedule instances."""
+    """Factory for creating Lesson instances (legacy name kept for tests)."""
     
     class Meta:
-        model = 'schedule.Schedule'
+        model = 'schedule.Lesson'
     
     group = factory.SubFactory(SchoolGroupFactory)
+    course = factory.LazyAttribute(lambda obj: obj.group.course)
     teacher = factory.LazyAttribute(lambda obj: obj.group.teacher)
-    classdateStart = factory.LazyFunction(
+    lesson_type = 'group'
+    starts_at = factory.LazyFunction(
         lambda: timezone.now() + timedelta(days=1, hours=10)
     )
-    classdateEnd = factory.LazyAttribute(
-        lambda obj: (obj.classdateStart + timedelta(minutes=45)).time()
+    ends_at = factory.LazyAttribute(
+        lambda obj: obj.starts_at + timedelta(minutes=45)
     )
     status = 'scheduled'
+
+    @classmethod
+    def _create(cls, model_class, *args, **kwargs):
+        classdate_start = kwargs.pop('classdateStart', None)
+        classdate_end = kwargs.pop('classdateEnd', None)
+        if classdate_start is not None:
+            kwargs['starts_at'] = classdate_start
+        if classdate_end is not None:
+            start = kwargs.get('starts_at') or timezone.now()
+            kwargs['ends_at'] = timezone.make_aware(datetime.combine(start.date(), classdate_end)) if timezone.is_naive(datetime.combine(start.date(), classdate_end)) else datetime.combine(start.date(), classdate_end)
+        if kwargs.get('group') and not kwargs.get('course'):
+            kwargs['course'] = kwargs['group'].course
+        return super()._create(model_class, *args, **kwargs)
+
+    @factory.post_generation
+    def participants(obj, create, extracted, **kwargs):
+        if not create:
+            return
+        from schedule.models import LessonParticipant
+        from students.models import StudentGroups
+
+        if extracted:
+            for student in extracted:
+                LessonParticipant.objects.get_or_create(lesson=obj, student=student)
+        elif obj.group_id:
+            for membership in StudentGroups.objects.filter(group=obj.group).select_related('student'):
+                LessonParticipant.objects.get_or_create(lesson=obj, student=membership.student)
 
 
 class GroupScheduleTemplateFactory(DjangoModelFactory):
@@ -334,7 +363,7 @@ def create_schedule_with_attendance(student_count=3):
     Returns:
         tuple: (schedule, list of students, list of attendance records)
     """
-    from subscriptions.models import LessonAttendance
+    from schedule.models import LessonParticipant
     
     group, students = create_group_with_students(student_count)
     schedule = ScheduleFactory(group=group)
@@ -345,13 +374,13 @@ def create_schedule_with_attendance(student_count=3):
         subscription.student = student
         subscription.save()
         
-        attendance = LessonAttendance.objects.create(
-            schedule=schedule,
+        attendance = LessonParticipant.objects.create(
+            lesson=schedule,
             student=student,
             subscription=subscription,
-            status='present',
-            lessons_count=1,
-            lesson_deducted=True
+            attendance_status='present',
+            lessons_to_charge=1,
+            lessons_charged=True
         )
         attendance_records.append(attendance)
     

@@ -25,14 +25,20 @@ def payment_success(request):
     if payment_id:
         try:
             payment = Payment.objects.select_related(
+                'order',
+                'order__student',
                 'subscription', 
                 'subscription__student',
                 'subscription__tariff'
-            ).get(yookassa_payment_id=payment_id)
-            
+            ).prefetch_related('order__items', 'order__items__subscription').get(yookassa_payment_id=payment_id)
+            subscription = payment.subscription
+            if not subscription and payment.order_id:
+                item = payment.order.items.filter(subscription__isnull=False).select_related('subscription', 'subscription__student').first()
+                subscription = item.subscription if item else None
+             
             context['payment'] = payment
-            context['subscription'] = payment.subscription
-            context['student'] = payment.subscription.student
+            context['subscription'] = subscription
+            context['student'] = subscription.student if subscription else payment.order.student if payment.order_id else None
             
             logger.info(f"Payment success page viewed: payment_id={payment.id}, user={request.user.id}")
             

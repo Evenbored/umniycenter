@@ -19,7 +19,7 @@ from tests.utils import (
 class PaymentServiceCreatePaymentTest(TestCase):
     """Test cases for PaymentService.create_payment()."""
     
-    @patch('subscriptions.payment_service.yookassa.Payment.create')
+    @patch('subscriptions.payment_service.YooPayment.create')
     def test_create_online_payment_success(self, mock_yookassa):
         """Test creating online payment with YooKassa."""
         subscription = SubscriptionFactory(status='pending')
@@ -27,13 +27,13 @@ class PaymentServiceCreatePaymentTest(TestCase):
             payment_id='test_123',
             amount=str(subscription.tariff.price)
         )
-        
-        payment = PaymentService.create_payment(
-            subscription_id=subscription.id,
-            parent_id=subscription.parent.id,
-            payment_method='online',
-            return_url='http://test.com/success'
-        )
+        with patch.object(PaymentService, 'yookassa_is_configured', return_value=True):
+            payment = PaymentService.create_payment(
+                subscription_id=subscription.id,
+                parent_id=subscription.parent.id,
+                payment_method='online',
+                return_url='http://test.com/success'
+            )
         
         self.assertEqual(payment.payment_method, 'online')
         self.assertEqual(payment.status, 'pending')
@@ -82,19 +82,20 @@ class PaymentServiceCreatePaymentTest(TestCase):
         self.assertEqual(payment.payment_method, 'transfer')
         self.assertEqual(payment.notes, 'Перевод на счет')
     
-    @patch('subscriptions.payment_service.yookassa.Payment.create')
+    @patch('subscriptions.payment_service.YooPayment.create')
     def test_create_payment_with_yookassa_error(self, mock_yookassa):
         """Test handling YooKassa API error."""
         subscription = SubscriptionFactory(status='pending')
         mock_yookassa.side_effect = Exception('YooKassa API Error')
         
-        with self.assertRaises(Exception):
-            PaymentService.create_payment(
-                subscription_id=subscription.id,
-                parent_id=subscription.parent.id,
-                payment_method='online',
-                return_url='http://test.com/success'
-            )
+        with patch.object(PaymentService, 'yookassa_is_configured', return_value=True):
+            with self.assertRaises(Exception):
+                PaymentService.create_payment(
+                    subscription_id=subscription.id,
+                    parent_id=subscription.parent.id,
+                    payment_method='online',
+                    return_url='http://test.com/success'
+                )
     
     def test_create_payment_amount_matches_tariff(self):
         """Test that payment amount matches tariff price."""
@@ -133,7 +134,7 @@ class PaymentServiceWebhookTest(TestCase):
             source_ip='185.71.76.0'  # Valid YooKassa IP
         )
         
-        self.assertTrue(result)
+        self.assertEqual(result.status, 'completed')
         
         payment.refresh_from_db()
         subscription.refresh_from_db()
@@ -237,7 +238,7 @@ class PaymentServiceWebhookTest(TestCase):
             source_ip='185.71.76.0'
         )
         
-        self.assertTrue(result)
+        self.assertEqual(result.status, 'completed')
         
         payment.refresh_from_db()
         self.assertEqual(payment.status, 'canceled')
@@ -258,7 +259,7 @@ class PaymentServiceConfirmOfflinePaymentTest(TestCase):
         
         result = PaymentService.confirm_offline_payment(payment.id)
         
-        self.assertTrue(result)
+        self.assertEqual(result.status, 'completed')
         
         payment.refresh_from_db()
         subscription.refresh_from_db()
@@ -278,7 +279,7 @@ class PaymentServiceConfirmOfflinePaymentTest(TestCase):
         
         result = PaymentService.confirm_offline_payment(payment.id)
         
-        self.assertTrue(result)
+        self.assertEqual(result.status, 'completed')
         
         payment.refresh_from_db()
         self.assertEqual(payment.status, 'completed')
@@ -294,7 +295,7 @@ class PaymentServiceConfirmOfflinePaymentTest(TestCase):
         
         result = PaymentService.confirm_offline_payment(payment.id)
         
-        self.assertTrue(result)
+        self.assertEqual(result.status, 'canceled')
         
         payment.refresh_from_db()
         self.assertEqual(payment.status, 'completed')
@@ -344,7 +345,7 @@ class PaymentServiceConfirmOfflinePaymentTest(TestCase):
         # This depends on your implementation
         result = PaymentService.confirm_offline_payment(payment.id)
         
-        self.assertTrue(result)
+        self.assertEqual(result.status, 'completed')
 
 
 @pytest.mark.critical
@@ -361,7 +362,7 @@ class PaymentServiceCancelPaymentTest(TestCase):
         
         result = PaymentService.cancel_payment(payment.id)
         
-        self.assertTrue(result)
+        self.assertEqual(result.status, 'canceled')
         
         payment.refresh_from_db()
         self.assertEqual(payment.status, 'canceled')

@@ -8,7 +8,7 @@ from django.core.cache import cache
 from django.utils import timezone
 from datetime import datetime, timedelta, time, date
 from schedule.services import get_user_schedule, get_lesson_end_time, generate_schedule_for_range
-from schedule.models import Schedule, GroupScheduleTemplate
+from schedule.models import Lesson, GroupScheduleTemplate
 from tests.utils import (
     TeacherFactory, StudentFactory, SchoolGroupFactory,
     GroupScheduleTemplateFactory, ScheduleFactory
@@ -218,10 +218,10 @@ class GenerateScheduleForRangeTest(TestCase):
         schedules2 = generate_schedule_for_range(date_from, date_to, group.id)
         
         # Total count should be same or similar (get_or_create behavior)
-        total_schedules = Schedule.objects.filter(
+        total_schedules = Lesson.objects.filter(
             group=group,
-            classdateStart__date__gte=date_from,
-            classdateStart__date__lte=date_to
+            starts_at__date__gte=date_from,
+            starts_at__date__lte=date_to
         ).count()
         
         self.assertGreaterEqual(total_schedules, initial_count)

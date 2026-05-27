@@ -12,11 +12,14 @@ def subscriptions_view(request):
 def get_payments_queryset(request):
     payments = Payment.objects.select_related(
         "parent",
+        "order",
+        "order__parent",
+        "order__student",
         "subscription",
         "subscription__student",
         "subscription__tariff",
         "subscription__tariff__course",
-    )
+    ).prefetch_related("order__items", "order__items__subscription", "order__items__tariff")
     search = (request.GET.get("search") or "").strip()
     status = request.GET.get("status") or ""
     method = request.GET.get("method") or ""
@@ -32,9 +35,12 @@ def get_payments_queryset(request):
             | Q(subscription__student__last_name__icontains=search)
             | Q(subscription__tariff__name__icontains=search)
             | Q(subscription__tariff__course__name__icontains=search)
+            | Q(order__student__first_name__icontains=search)
+            | Q(order__student__last_name__icontains=search)
+            | Q(order__items__title__icontains=search)
             | Q(transaction_id__icontains=search)
             | Q(yookassa_payment_id__icontains=search)
-        )
+        ).distinct()
     if status:
         payments = payments.filter(status=status)
     if method:
@@ -199,8 +205,8 @@ def get_subscriptions_context(request, subscription=None, error=None):
         "status_choices": Subscription.STATUS_CHOICES,
         "subscription_type_choices": Tariff.SUBSCRIPTION_TYPE_CHOICES,
         "selected_subscription": prepare_subscription_for_crm(subscription) if subscription else None,
-        "subscription_logs": subscription.logs.select_related("created_by", "related_lesson").order_by("-created_at")[:20] if subscription else [],
-        "subscription_payments": subscription.payments.select_related("parent").order_by("-created_at") if subscription else [],
+        "subscription_logs": subscription.logs.select_related("created_by", "related_lesson", "related_new_lesson").order_by("-created_at")[:20] if subscription else [],
+        "subscription_payments": subscription.payments.select_related("parent", "order").order_by("-created_at") if subscription else [],
         "form_error": error,
     }
 
@@ -222,11 +228,14 @@ def get_payment_for_drawer(payment_id):
     return get_object_or_404(
         Payment.objects.select_related(
             "parent",
+            "order",
+            "order__parent",
+            "order__student",
             "subscription",
             "subscription__student",
             "subscription__tariff",
             "subscription__tariff__course",
-        ),
+        ).prefetch_related("order__items", "order__items__subscription", "order__items__tariff"),
         id=payment_id,
     )
 

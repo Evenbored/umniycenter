@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from ..models import Tariff, Subscription, Payment, LessonAttendance
+from schedule.models import LessonParticipant
 from accounts.models import CustomUser
 from courses.models import Courses
 
@@ -56,28 +57,46 @@ class PaymentSerializer(serializers.ModelSerializer):
     yookassa_payment_url = serializers.URLField(read_only=True)
     yookassa_payment_id = serializers.CharField(read_only=True)
     subscription_info = serializers.SerializerMethodField()
+    order_info = serializers.SerializerMethodField()
+    items_info = serializers.SerializerMethodField()
     
     def get_subscription_info(self, obj):
+        subscription = obj.subscription
+        if not subscription and obj.order_id:
+            item = obj.order.items.filter(subscription__isnull=False).select_related('subscription', 'subscription__student', 'subscription__tariff', 'subscription__tariff__course').first()
+            subscription = item.subscription if item else None
+        if not subscription:
+            return None
         return {
-            'id': obj.subscription.id,
-            'student_name': obj.subscription.student.get_full_name(),
-            'student_id': obj.subscription.student_id,
-            'tariff_name': obj.subscription.tariff.name,
-            'course_name': obj.subscription.tariff.course.name,
-            'subscription_type': obj.subscription.tariff.subscription_type,
-            'subscription_type_display': obj.subscription.tariff.get_subscription_type_display(),
-            'subscription_status': obj.subscription.status,
-            'lessons_total': obj.subscription.lessons_total,
-            'lessons_used': obj.subscription.lessons_used,
-            'lessons_remaining': obj.subscription.lessons_remaining,
-            'start_date': obj.subscription.start_date,
-            'end_date': obj.subscription.end_date,
+            'id': subscription.id,
+            'student_name': subscription.student.get_full_name(),
+            'student_id': subscription.student_id,
+            'tariff_name': subscription.tariff.name,
+            'course_name': subscription.tariff.course.name,
+            'subscription_type': subscription.tariff.subscription_type,
+            'subscription_type_display': subscription.tariff.get_subscription_type_display(),
+            'subscription_status': subscription.status,
+            'lessons_total': subscription.lessons_total,
+            'lessons_used': subscription.lessons_used,
+            'lessons_remaining': subscription.lessons_remaining,
+            'start_date': subscription.start_date,
+            'end_date': subscription.end_date,
         }
+
+    def get_order_info(self, obj):
+        if not obj.order_id:
+            return None
+        return {'id': obj.order_id, 'status': obj.order.status, 'total_amount': obj.order.total_amount, 'paid_amount': obj.order.paid_amount, 'student_id': obj.order.student_id, 'parent_id': obj.order.parent_id}
+
+    def get_items_info(self, obj):
+        if not obj.order_id:
+            return []
+        return [{'id': item.id, 'item_type': item.item_type, 'title': item.title, 'amount': item.amount, 'quantity': item.quantity, 'subscription': item.subscription_id, 'lesson': item.lesson_id} for item in obj.order.items.all()]
     
     class Meta:
         model = Payment
         fields = [
-            'id', 'subscription', 'subscription_info',
+            'id', 'order', 'order_info', 'items_info', 'subscription', 'subscription_info',
             'parent', 'parent_name',
             'parent_phone', 'parent_email',
             'amount', 'payment_method', 'payment_method_display', 'status', 'status_display',
@@ -93,6 +112,18 @@ class LessonAttendanceSerializer(serializers.ModelSerializer):
     marked_by_name = serializers.SerializerMethodField()
     
     def get_schedule_info(self, obj):
+        if isinstance(obj, LessonParticipant):
+            lesson = obj.lesson
+            group = lesson.group
+            course = lesson.course
+            return {
+                'id': lesson.id,
+                'date': lesson.starts_at,
+                'group': lesson.title,
+                'course': course.name if course else '',
+                'lesson_type': lesson.lesson_type,
+                'is_single': lesson.is_single,
+            }
         group = obj.schedule.group
         course = group.course if group else obj.schedule.course
         return {
@@ -120,6 +151,26 @@ class LessonAttendanceSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         ]
         read_only_fields = ['lesson_deducted', 'created_at', 'updated_at']
+
+    def to_representation(self, instance):
+        if isinstance(instance, LessonParticipant):
+            return {
+                'id': instance.id,
+                'schedule': instance.lesson_id,
+                'schedule_info': self.get_schedule_info(instance),
+                'student': instance.student_id,
+                'student_name': instance.student.get_full_name(),
+                'subscription': instance.subscription_id,
+                'status': instance.attendance_status,
+                'lessons_count': instance.lessons_to_charge,
+                'lesson_deducted': instance.lessons_charged,
+                'notes': instance.notes,
+                'marked_by': instance.marked_by_id,
+                'marked_by_name': instance.marked_by.get_full_name() if instance.marked_by else '',
+                'created_at': instance.created_at,
+                'updated_at': instance.updated_at,
+            }
+        return super().to_representation(instance)
 
 
 class CreateSubscriptionSerializer(serializers.Serializer):

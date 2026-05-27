@@ -85,6 +85,7 @@
                     formatted_total: '0',
                     formatted_income_total: '0',
                     formatted_expense_total: '0',
+                    payments_count: 0,
                 },
                 groupAttendances: [],
                 individualAttendances: [],

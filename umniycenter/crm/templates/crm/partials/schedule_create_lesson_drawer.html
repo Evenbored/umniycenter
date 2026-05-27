@@ -9,8 +9,8 @@
             <div class="crm-create-lesson-section">
                 <div class="crm-create-lesson-section__title">1. Формат занятия</div>
                 <div class="crm-segmented-control" role="radiogroup" aria-label="Формат занятия">
-                    <label class="crm-segmented-control__item"><input type="radio" name="lesson_type" value="regular" {% if selected_lesson_type == 'regular' %}checked{% endif %}><span>Постоянное</span></label>
-                    <label class="crm-segmented-control__item"><input type="radio" name="lesson_type" value="single" {% if selected_lesson_type == 'single' %}checked{% endif %}><span>Разовое</span></label>
+                    <label class="crm-segmented-control__item"><input type="radio" name="lesson_type" value="regular" {% if selected_lesson_type == 'regular' %}checked{% endif %} hx-get="{% url 'crm:schedule_lesson_create_drawer' %}" hx-trigger="change" hx-target="#createLessonDrawerContent" hx-swap="outerHTML" hx-include="#createLessonForm"><span>Постоянное</span></label>
+                    <label class="crm-segmented-control__item"><input type="radio" name="lesson_type" value="single" {% if selected_lesson_type == 'single' %}checked{% endif %} hx-get="{% url 'crm:schedule_lesson_create_drawer' %}" hx-trigger="change" hx-target="#createLessonDrawerContent" hx-swap="outerHTML" hx-include="#createLessonForm"><span>Разовое</span></label>
                 </div>
             </div>
             <div class="crm-create-lesson-section">
@@ -19,13 +19,21 @@
                 <div class="crm-create-lesson-mode">Выберите курс, затем группу или ученика</div>
                 <label class="crm-form-field"><span>Группа</span><select name="group" hx-get="{% url 'crm:schedule_lesson_create_drawer' %}" hx-trigger="change" hx-target="#createLessonDrawerContent" hx-swap="outerHTML" hx-include="#createLessonForm" {% if not selected_course_id %}disabled{% endif %}><option value="">Выберите группу</option>{% for group in create_groups %}<option value="{{ group.id }}" {% if selected_group_id == group.id|stringformat:'s' %}selected{% endif %}>{{ group.number }} · {{ group.teacher.get_full_name|default:group.teacher.username }}</option>{% endfor %}</select><small style="color: var(--crm-muted); font-size: 12px; margin-top: 4px; display: block;">Если выбрана группа — занятие будет групповым.</small></label>
                 {% if selected_group_id %}
-                    <label class="crm-form-field"><span>Ученики группы *</span><select name="students" multiple size="7">{% for student in create_students %}<option value="{{ student.id }}" selected>{{ student.get_full_name|default:student.username }}</option>{% endfor %}</select><small style="color: var(--crm-muted); font-size: 12px; margin-top: 4px; display: block;">Показаны только ученики с активным групповым абонементом на выбранный курс.</small></label>
+                    <label class="crm-form-field"><span>Ученики группы {% if selected_lesson_type != 'single' %}*{% endif %}</span><select name="students" multiple size="7">{% for student in create_students %}<option value="{{ student.id }}" selected>{{ student.get_full_name|default:student.username }}</option>{% endfor %}</select><small style="color: var(--crm-muted); font-size: 12px; margin-top: 4px; display: block;">{% if selected_lesson_type == 'single' %}Для разового группового занятия абонемент не требуется; продажа будет создана одной позицией заказа.{% else %}Показаны только ученики с активным групповым абонементом на выбранный курс.{% endif %}</small></label>
                 {% else %}
-                    <label class="crm-form-field"><span>Ученик</span><select name="student" {% if not selected_course_id %}disabled{% endif %}><option value="">Выберите ученика</option>{% for student in create_students %}<option value="{{ student.id }}">{{ student.get_full_name|default:student.username }}</option>{% endfor %}</select><small style="color: var(--crm-muted); font-size: 12px; margin-top: 4px; display: block;">Показаны только ученики с активным индивидуальным абонементом на выбранный курс.</small></label>
+                    <label class="crm-form-field"><span>Ученик</span><select name="student" {% if not selected_course_id %}disabled{% endif %}><option value="">Выберите ученика</option>{% for student in create_students %}<option value="{{ student.id }}" {% if request.POST.student == student.id|stringformat:'s' %}selected{% endif %}>{{ student.get_full_name|default:student.username }}</option>{% endfor %}</select><small style="color: var(--crm-muted); font-size: 12px; margin-top: 4px; display: block;">{% if selected_lesson_type == 'single' %}Для разового индивидуального занятия абонемент не требуется.{% else %}Показаны только ученики с активным индивидуальным абонементом на выбранный курс.{% endif %}</small></label>
                 {% endif %}
             </div>
+            {% if selected_lesson_type == 'single' %}
             <div class="crm-create-lesson-section">
-                <div class="crm-create-lesson-section__title">3. Время и преподаватель</div>
+                <div class="crm-create-lesson-section__title">3. Продажа разового занятия</div>
+                <label class="crm-form-field"><span>Стоимость *</span><input name="single_lesson_amount" type="number" min="1" step="0.01" value="{{ single_lesson_amount }}" required></label>
+                <label class="crm-form-field"><span>Способ оплаты</span><select name="single_lesson_payment_method">{% for value,label in payment_method_choices %}<option value="{{ value }}" {% if single_lesson_payment_method == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+                <label class="crm-checkbox-filter"><input type="checkbox" name="single_lesson_paid" {% if single_lesson_paid %}checked{% endif %}><span>Оплата получена сразу</span></label>
+            </div>
+            {% endif %}
+            <div class="crm-create-lesson-section">
+                <div class="crm-create-lesson-section__title">{% if selected_lesson_type == 'single' %}4{% else %}3{% endif %}. Время и преподаватель</div>
                 <label class="crm-form-field"><span>Дата и время *</span><input name="classdateStart" type="datetime-local" value="{{ request.POST.classdateStart }}" required></label>
                 <label class="crm-form-field"><span>Длительность *</span><select name="lessons_count" required><option value="1">1 занятие (45 минут)</option><option value="2" selected>2 занятия (90 минут)</option></select></label>
                 <label class="crm-form-field"><span>Преподаватель *</span><select name="teacher" required><option value="">Выберите преподавателя</option>{% for teacher in teachers %}<option value="{{ teacher.id }}" {% if request.POST.teacher == teacher.id|stringformat:'s' %}selected{% endif %}>{{ teacher.get_full_name|default:teacher.username }}</option>{% endfor %}</select></label>
