@@ -202,6 +202,8 @@ class ScheduleFactory(DjangoModelFactory):
         classdate_end = kwargs.pop('classdateEnd', None)
         if classdate_start is not None:
             kwargs['starts_at'] = classdate_start
+            if classdate_end is None:
+                kwargs['ends_at'] = classdate_start + timedelta(minutes=45)
         if classdate_end is not None:
             start = kwargs.get('starts_at') or timezone.now()
             kwargs['ends_at'] = timezone.make_aware(datetime.combine(start.date(), classdate_end)) if timezone.is_naive(datetime.combine(start.date(), classdate_end)) else datetime.combine(start.date(), classdate_end)

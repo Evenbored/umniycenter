@@ -8,6 +8,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from datetime import timedelta, time
 from schedule.models import Lesson, GroupScheduleTemplate
+from schedule.services import LessonService
 from tests.utils import ScheduleFactory, GroupScheduleTemplateFactory, SchoolGroupFactory, TeacherFactory
 
 
@@ -166,8 +167,6 @@ class ScheduleModelTest(TestCase):
         """Test tracking original dates for rescheduled lesson."""
         group = SchoolGroupFactory()
         original_start = timezone.now() + timedelta(days=1)
-        original_end = (original_start + timedelta(minutes=45)).time()
-        
         schedule = Lesson.objects.create(
             group=group,
             course=group.course,
@@ -180,16 +179,15 @@ class ScheduleModelTest(TestCase):
         
         # Reschedule
         new_start = original_start + timedelta(days=2)
-        schedule.original_classdateStart = schedule.classdateStart
-        schedule.original_classdateEnd = schedule.classdateEnd
-        schedule.classdateStart = new_start
-        schedule.classdateEnd = (new_start + timedelta(minutes=45)).time()
-        schedule.status = 'rescheduled'
-        schedule.reschedule_reason = 'Болезнь учителя'
-        schedule.save()
+        LessonService.reschedule_lesson(
+            schedule,
+            new_start,
+            new_start + timedelta(minutes=45),
+            'Болезнь учителя',
+        )
         
         self.assertEqual(schedule.status, 'rescheduled')
-        self.assertIsNotNone(schedule.original_classdateStart)
+        self.assertIsNotNone(schedule.original_starts_at)
         self.assertEqual(schedule.reschedule_reason, 'Болезнь учителя')
     
     def test_cancelled_lesson_with_reason(self):
@@ -218,15 +216,15 @@ class ScheduleModelTest(TestCase):
         
         schedule1 = ScheduleFactory(
             group=group,
-            classdateStart=timezone.now() + timedelta(days=1)
+            starts_at=timezone.now() + timedelta(days=1)
         )
         schedule2 = ScheduleFactory(
             group=group,
-            classdateStart=timezone.now() + timedelta(days=2)
+            starts_at=timezone.now() + timedelta(days=2)
         )
         schedule3 = ScheduleFactory(
             group=group,
-            classdateStart=timezone.now() + timedelta(days=3)
+            starts_at=timezone.now() + timedelta(days=3)
         )
         
         group_schedules = Lesson.objects.filter(group=group)
